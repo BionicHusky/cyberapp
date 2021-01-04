@@ -1,0 +1,20 @@
+site_name: Cyberpunk 2077 Autohacker
+
+nav:
+  - "Documentation": index.md
+
+site_dir: public
+
+theme:
+    name: material
+    palette:
+        scheme: slate
+    favicon: media/icon.png
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.keys

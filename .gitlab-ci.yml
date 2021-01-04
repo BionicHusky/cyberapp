@@ -1,0 +1,71 @@
+.shared_windows_runners:
+    tags:
+      - shared-windows
+      - windows
+      - windows-1809
+
+stages:
+  - test
+  - build
+  - docs
+
+variables:
+    CPAH_BIN: "cpah.exe"
+
+before_script:
+  - Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+  - choco install python --version=3.7.9 --yes
+  - RefreshEnv
+  - python -m pip install poetry
+
+test:
+    extends:
+      - .shared_windows_runners
+    stage: test
+    script:
+      - poetry install --extras "test"
+      - poetry run pytest
+      ## TODO: Enable test parsing
+
+build:
+    extends:
+      - .shared_windows_runners
+    stage: build
+    only:
+      - master
+    script:
+      - poetry install --extras "build"
+
+        ## Get new version
+      - curl.exe -O https://utils.jshbox.space/scripts/gitlab_vera.py
+      - python gitlab_vera.py version
+      - Set-Variable -Name "VERSION" -Value (Get-Content VERSION)
+
+        ## Freeze with PyInstaller
+      - >
+        poetry run pyinstaller
+        --name="cpah"
+        --onefile
+        --windowed
+        --icon "cpah/resources/images/icon.ico"
+        --add-data "cpah/resources;resources/."
+        --add-data "VERSION;."
+        --hidden-import="PySide2.QtXml"
+        .\entrypoint.py
+
+        ## Package and release built binary
+      - python gitlab_vera.py package "dist/${CPAH_BIN}"
+      - python gitlab_vera.py release
+
+pages:
+    extends:
+      - .shared_windows_runners
+    stage: docs
+    only:
+      - master
+    artifacts:
+        paths:
+          - public
+    script:
+      - poetry install --extras "docs"
+      - poetry run mkdocs build --strict --verbose
