@@ -20,7 +20,8 @@ class Config(pydantic.BaseSettings):
         True, description="Show the autohack warning message to not move the mouse"
     )
     auto_autohack: bool = pydantic.Field(
-        False, description="Run autohacking automatically if all targets can be obtained"
+        False,
+        description="Run autohacking automatically if all targets can be obtained",
     )
     enable_beeps: bool = pydantic.Field(
         False, description="Allow for beep notifications"
@@ -92,10 +93,6 @@ class Config(pydantic.BaseSettings):
 @dataclasses.dataclass
 class ScreenshotData:
     screenshot: numpy.ndarray
-    window_bounds: Tuple[Tuple[int, int], Tuple[int, int]]
-    window_size: Tuple[int, int]
-    aspect_ratio_correction: float
-    fullscreen: bool
 
 
 @dataclasses.dataclass

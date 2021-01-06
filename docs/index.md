@@ -90,6 +90,10 @@ based on the targets you selected.
     Moving the mouse will reset the position of the cursor in the code matrix, which will make
     CPAH input an invalid solution.
 
+!!! note
+    If you are running Cyberpunk as an administrator, you will also need to run CPAH as an
+    administrator, otherwise autohacking will not work.
+
 ### Configuration
 
 CPAH can be configured to be more friendly for single monitor users, and for those running
@@ -141,6 +145,53 @@ so you may need to play around with them and see what works for you.
 !!! note
     Buffer box detection is the hardest at lower resolutions -- sometimes lowering the detection
     for buffer boxes doesn't help. In this case, you can set a buffer size override instead.
+
+## Running from source
+
+If you'd like to run CPAH from source and you're on Windows,
+install [git](https://git-scm.com/download/win){target=_blank} and
+[Python 3.7](https://www.python.org/downloads/release/python-379/){target=_blank},
+then execute the following in PowerShell (CMD should work but we live in the future):
+
+```powershell
+PS> git clone https://gitlab.com/jkchen2/cpah.git
+PS> cd cpah
+PS> python -m pip install poetry
+PS> python -m poetry install
+PS> python -m poetry shell
+PS> python entrypoint.py
+```
+
+### Linting
+
+To lint code, follow the above steps for running from source (sans the last line), and run:
+
+```powershell
+PS> poetry install --extras lint
+PS> black cpah tests
+PS> mypy cpah tests
+```
+
+### Testing
+
+To run tests, follow the above steps for running from source (sans the last line), and run:
+
+```powershell
+PS> poetry install --extras test
+PS> pytest
+```
+
+### Documentation
+
+To build docs, follow the above steps for running from source (sans the last line), and run:
+
+```powershell
+PS> poetry install --extras docs
+PS> mkdocs serve
+```
+
+Then visit [http://localhost:8000](http://localhost:8000){target=_blank}
+for the [MkDocs](https://www.mkdocs.org/){target=_blank} generated documentation.
 
 ## Debugging
 

@@ -3,7 +3,7 @@ import pathlib
 
 from typing import List, Optional, Tuple, Type
 
-import pytest
+import pytest  # type: ignore
 
 import cpah
 
@@ -391,6 +391,20 @@ screenshot_test_data = [
         test_id="Invalid screenshot",
         screenshot_name="6.png",
         raises=cpah.exceptions.CPAHScreenshotParseFailedException,
+    ),
+    ScreenshotTestCase(
+        test_id="Ultrawide size",
+        screenshot_name="7.png",
+        matrix_data=[
+            [0, 0, 1, 4, 1],
+            [1, 3, 4, 0, 3],
+            [0, 3, 1, 4, 4],
+            [0, 3, 3, 0, 1],
+            [1, 1, 0, 1, 1],
+        ],
+        buffer_size=8,
+        sequences=[[1, 3], [3, 1], [1, 0, 1]],
+        targets=["DATAMINE_V1", "DATAMINE_V2", "DATAMINE_V3"],
     ),
 ]
 

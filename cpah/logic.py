@@ -69,7 +69,6 @@ def generate_matrix_image(image_size: int, matrix_data: List[List[int]]) -> Imag
                     constants.MATRIX_COMPOSITE_DISTANCE * column_index,
                 ),
             )
-    print("MI size:", matrix_image.size)
     if image_size > constants.MAX_IMAGE_SIZE:
         matrix_image = matrix_image.resize((constants.MAX_IMAGE_SIZE,) * 2)
     return matrix_image
@@ -113,23 +112,24 @@ def generate_sequence_path_image(
             width=constants.SEQUENCE_PATH_IMAGE_THICKNESS,
         )
 
+        ## Draw arrows on all boxes except the last one
         if coordinate_index < len(converted_path) - 1:
             next_coordinate = converted_path[coordinate_index + 1]
-            swap = False
             if next_coordinate[1] == coordinate[1]:  ## Same row
                 direction = 1 if next_coordinate[0] > coordinate[0] else -1
+                swap = False
             else:  ## Same column
                 direction = 1 if next_coordinate[1] > coordinate[1] else -1
                 swap = True
             x_coordinates = (
-                coordinate[1 if swap else 0] + box_offset * direction,
-                coordinate[1 if swap else 0] + box_offset * direction,
-                coordinate[1 if swap else 0] + (box_offset + spias) * direction,
+                coordinate[swap] + box_offset * direction,
+                coordinate[swap] + box_offset * direction,
+                coordinate[swap] + (box_offset + spias) * direction,
             )
             y_coordinates = (
-                coordinate[0 if swap else 1] - box_offset,
-                coordinate[0 if swap else 1] + box_offset,
-                coordinate[0 if swap else 1],
+                coordinate[not swap] - box_offset,
+                coordinate[not swap] + box_offset,
+                coordinate[not swap],
             )
             if swap:
                 coordinates_zip = tuple(zip(y_coordinates, x_coordinates))
@@ -137,7 +137,6 @@ def generate_sequence_path_image(
                 coordinates_zip = tuple(zip(x_coordinates, y_coordinates))
             draw.polygon(coordinates_zip, fill=color)
 
-    print("SPI size:", sequence_path_image.size)
     if image_size > constants.MAX_IMAGE_SIZE:
         sequence_path_image = sequence_path_image.resize(
             (constants.MAX_IMAGE_SIZE,) * 2
@@ -206,15 +205,12 @@ def grab_screenshot(
         screenshot = Image.open(from_file)
         x_start = y_start = 0
         x_end, y_end = screenshot.size
-        fullscreen = True
     else:
         LOG.debug(f"Taking a screenshot from the game")
         hwnd = _focus_game_window()
         x_start, y_start, x_end, y_end = win32gui.GetWindowRect(hwnd)
         LOG.debug(f"WindowRect: ({x_start}, {y_start}), ({x_end}, {y_end})")
-        fullscreen = True
         if x_start != 0 or y_start != 0:  ## Hacky way to check if not in fullscreen
-            fullscreen = False
             LOG.debug("CP2077 detected to be running in windowed mode")
             x_start, y_start, x_end, y_end = win32gui.GetClientRect(hwnd)
             LOG.debug(f"ClientRect: ({x_start}, {y_start}), ({x_end}, {y_end})")
@@ -233,35 +229,34 @@ def grab_screenshot(
     LOG.debug(f"Screenshot resolution: {original_resolution}")
 
     ## Detect and account for resolution aspect ratios other than 16:9
-    half_width = screenshot.size[0] / 2
-    pixel_counter = 0
-    black_bar_pixel = screenshot.getpixel((half_width, pixel_counter))
-    while black_bar_pixel == (0, 0, 0):
-        pixel_counter += 1
-        black_bar_pixel = screenshot.getpixel((half_width, pixel_counter))
+    for dimension_index in (0, 1):
+        order = 1 if dimension_index else -1
+        half_position = screenshot.size[dimension_index] / 2
+        pixel_counter = 0
+        black_bar_pixel = screenshot.getpixel((pixel_counter, half_position)[::order])
+        while black_bar_pixel == (0, 0, 0):
+            pixel_counter += 1
+            black_bar_pixel = screenshot.getpixel(
+                (pixel_counter, half_position)[::order]
+            )
 
-    aspect_ratio_correction = pixel_counter / screenshot.size[1]
-    if pixel_counter > 0:
-        LOG.info(
-            "Cropping and resizing incorrect aspect ratio screenshot. "
-            f"Black bar size: {pixel_counter}, {aspect_ratio_correction * 100}%"
-        )
-        screenshot = screenshot.crop(
-            (0, pixel_counter, screenshot.size[0], screenshot.size[1] - pixel_counter)
-        )
+        if pixel_counter > 0:
+            LOG.info(
+                "Cropping and resizing incorrect aspect ratio screenshot. "
+                f"Black bar size: {pixel_counter}"
+            )
+            crop_start = (pixel_counter, 0)[::order]
+            crop_end = (
+                screenshot.size[not dimension_index] - pixel_counter,
+                screenshot.size[dimension_index],
+            )[::order]
+            screenshot = screenshot.crop(crop_start + crop_end)
 
     screenshot = screenshot.resize(constants.ANALYSIS_IMAGE_SIZE)
 
     ## Convert screenshot to numpy array (so cv2 can use them)
     screenshot = numpy.array(screenshot)[:, :, ::-1].copy()
-
-    screenshot_data = models.ScreenshotData(
-        screenshot=screenshot,
-        window_bounds=((x_start, y_start), (x_end, y_end)),
-        window_size=original_resolution,
-        aspect_ratio_correction=aspect_ratio_correction,
-        fullscreen=fullscreen,
-    )
+    screenshot_data = models.ScreenshotData(screenshot=screenshot)
     return screenshot_data
 
 
