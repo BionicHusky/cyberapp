@@ -90,6 +90,10 @@ based on the targets you selected.
     Moving the mouse will reset the position of the cursor in the code matrix, which will make
     CPAH input an invalid solution.
 
+!!! note
+    If you are running Cyberpunk as an administrator, you will also need to run CPAH as an
+    administrator, otherwise autohacking will not work.
+
 ### Configuration
 
 CPAH can be configured to be more friendly for single monitor users, and for those running
