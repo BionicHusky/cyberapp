@@ -3,7 +3,7 @@ import pathlib
 
 from typing import List, Optional, Tuple, Type
 
-import pytest
+import pytest  # type: ignore
 
 import cpah
 

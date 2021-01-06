@@ -17,9 +17,12 @@ numpy = "1.19.3"
 pytest = { version = "^6.2.1", optional = true }
 pyinstaller = { version = "^4.1", optional = true }
 mkdocs = { version = "^1.1.2", optional = true }
-mkdocs-material = { version = "^6.2.3", optional = true}
+mkdocs-material = { version = "^6.2.3", optional = true }
+mypy = { version = "^0.790", optional = true }
+black = { version = "^20.8b1", optional = true }
 
 [tool.poetry.extras]
+lint = ["mypy", "black"]
 test = ["pytest"]
 build = ["pyinstaller"]
 docs = ["mkdocs", "mkdocs-material"]
