@@ -103,7 +103,7 @@ Cyberpunk at a resolution smaller than 1080p.
 ![configuration_detection](media/usage_05_configuration_detection.png)
 
 Each section in the configuration screen has a small section detailing what it does, which
-should provide enough information on what it does. However, here are a few more details
+should provide enough information to be self-explanatory. However, here are a few more details
 for some specific options:
 
 #### Analysis hotkey
