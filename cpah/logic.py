@@ -12,9 +12,8 @@ import numpy  # type: ignore
 import pyautogui  # type: ignore
 import win32gui  # type: ignore
 
+from desktopmagic import screengrab_win32  # type: ignore
 from PIL import Image, ImageDraw  # type: ignore
-from PySide2.QtCore import Signal
-from PySide2.QtGui import QPixmap
 
 from . import constants
 from . import exceptions
@@ -42,12 +41,13 @@ def load_config() -> models.Config:
                 f"Failed to load the config file at {constants.CONFIG_FILE_PATH}"
             )
             raise exceptions.CPAHInvalidConfigException(str(exception))
-    LOG.debug("Config file loaded")
+    LOG.debug(f"Config file loaded: {config}")
     return config
 
 
 def save_config(config: models.Config):
     LOG.debug(f"Saving config file to {constants.CONFIG_FILE_PATH}")
+    LOG.debug(f"Config: {config}")
     constants.CONFIG_FILE_PATH.write_text(config.json(indent=4))
     LOG.debug("Config file saved")
 
@@ -200,30 +200,30 @@ def grab_screenshot(
     config: models.Config, from_file: Optional[pathlib.Path] = None
 ) -> models.ScreenshotData:
     """Takes a screenshot of the game and calculates some stuff."""
+
     if from_file:
         LOG.debug(f"Loading screenshot from file: {from_file}")
         screenshot = Image.open(from_file)
-        x_start = y_start = 0
-        x_end, y_end = screenshot.size
     else:
         LOG.debug(f"Taking a screenshot from the game")
         hwnd = _focus_game_window()
         x_start, y_start, x_end, y_end = win32gui.GetWindowRect(hwnd)
         LOG.debug(f"WindowRect: ({x_start}, {y_start}), ({x_end}, {y_end})")
-        if x_start != 0 or y_start != 0:  ## Hacky way to check if not in fullscreen
+
+        if (x_start, y_start, x_end, y_end) in screengrab_win32.getDisplayRects():
+            LOG.debug("CP2077 detected to be running in fullscreen mode")
+        else:
             LOG.debug("CP2077 detected to be running in windowed mode")
-            x_start, y_start, x_end, y_end = win32gui.GetClientRect(hwnd)
-            LOG.debug(f"ClientRect: ({x_start}, {y_start}), ({x_end}, {y_end})")
-            x_start, y_start = win32gui.ClientToScreen(hwnd, (x_start, y_start))
-            x_end, y_end = win32gui.ClientToScreen(
-                hwnd, (x_end - x_start, y_end - y_start)
-            )
+            _, _, x_size, y_size = win32gui.GetClientRect(hwnd)
+            LOG.debug(f"ClientRect size: ({x_end}, {y_end})")
+            x_start, y_start = win32gui.ClientToScreen(hwnd, (0, 0))
+            x_end, y_end = x_start + x_size, y_start + y_size
             LOG.debug(f"ClientToScreen: ({x_start}, {y_start}), ({x_end}, {y_end})")
 
         ## Move mouse to the bottom of the screen to avoid the cursor getting in the way
         MOUSE.move((x_end, y_end))
 
-        screenshot = pyautogui.screenshot(region=(x_start, y_start, x_end, y_end))
+        screenshot = screengrab_win32.getRectAsImage((x_start, y_start, x_end, y_end))
 
     original_resolution = screenshot.size
     LOG.debug(f"Screenshot resolution: {original_resolution}")

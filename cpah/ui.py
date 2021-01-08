@@ -328,6 +328,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
         self.hotkey._the_grab = _error_handle_wrap_hotkey(self.hotkey._the_grab)
 
         ## State
+        self.analyzing = False
         self.autohacking = False
 
         ## Cache
@@ -371,6 +372,8 @@ class CPAH(ErrorHandlerMixin, QWidget):
         super().show_error_message(error, focus=focus or self)
         LOG.info("Resetting displays due to error")
         self.reset_displays()
+        self.analyzing = False
+        self.autohacking = False
 
     def cache_analysis_data(self, data: models.AnalysisData):
         LOG.debug(f"Caching analysis data: {data}")
@@ -398,6 +401,9 @@ class CPAH(ErrorHandlerMixin, QWidget):
         if self.autohacking:
             LOG.debug("Ignoring analysis start because autohacking is in progress.")
             return
+        elif self.analyzing:
+            LOG.debug("Ignoring analysis start because analysis is still running.")
+            return
         try:
             start_worker, thread_container = self._set_up_worker(
                 "analysis", AnalysisWorker
@@ -405,6 +411,8 @@ class CPAH(ErrorHandlerMixin, QWidget):
         except exceptions.CPAHThreadRunningException:
             LOG.warning("Analysis worker already running! Ignoring start...")
             return
+
+        self.analyzing = True
 
         ## Clear all images and cache
         self.reset_displays()
@@ -441,6 +449,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
 
     def analysis_finished(self, autohacking: bool = False):
         LOG.debug("analysis_finished")
+        self.analyzing = False
         self.analyze_button.setEnabled(not autohacking)
         self._reset_analyze_button_text()
 
@@ -887,7 +896,7 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
 
 def start():
     LOG.info(f"Starting {constants.APPLICATION_NAME} {constants.VERSION}")
-    application = QApplication([])
+    constants.QAPPLICATION_INSTANCE.setAttribute(Qt.AA_EnableHighDpiScaling)
     try:
         widget = CPAH()
     except Exception as exception:
@@ -896,4 +905,4 @@ def start():
         QMessageBox().critical(None, error.title, error.message, QMessageBox.Close)
         sys.exit(1)
     widget.show()
-    sys.exit(application.exec_())
+    sys.exit(constants.QAPPLICATION_INSTANCE.exec_())

@@ -1,3 +1,12 @@
+## Workaround for fetching monitor sizes that doesn't get affected by window scaling.
+## This must be run before pyautogui is imported, as it does some
+## behind-the-scenes stuff involving making the process DPI aware,
+## which breaks many things involving the screenshot process.
+from PySide2.QtWidgets import QApplication
+
+QAPPLICATION_INSTANCE = QApplication([])
+
+
 import os
 import pathlib
 import sys
