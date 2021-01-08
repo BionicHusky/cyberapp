@@ -1,6 +1,7 @@
-VERSION
+.version
+.version_old
 .asset_links.json
 __pycache__/
 build/
 dist/
-*.spec
+report.xml
