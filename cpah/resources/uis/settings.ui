@@ -16,6 +16,16 @@
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
+  <property name="styleSheet">
+   <string notr="true">* {
+	font-size: 11px;
+}
+
+QCheckBox::indicator {
+     width: 15px;
+     height: 15px;
+}</string>
+  </property>
   <widget class="QLabel" name="helpTextLabel">
    <property name="geometry">
     <rect>
