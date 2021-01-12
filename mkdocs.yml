@@ -2,6 +2,7 @@ site_name: Cyberpunk 2077 Autohacker
 
 nav:
   - "Documentation": index.md
+  - "Development": development.md
 
 site_dir: public
 
@@ -18,3 +19,5 @@ markdown_extensions:
   - admonition
   - attr_list
   - pymdownx.keys
+  - pymdownx.superfences
+  - pymdownx.tabbed
