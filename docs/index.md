@@ -11,7 +11,7 @@ Check out the video below for a quick demonstration:
 ## Features
 
 * Automatic matrix code and sequence detection using OpenCV
-* Selectable targets in case your buffer size is not large enough
+* Selectable daemons in case your buffer size is not large enough
 * Autohacking by sending keys to solve the matrix for you
 * Configurable hotkey to prevent the need to switch windows
 * Sound notifications for people with only one monitor
@@ -58,9 +58,9 @@ CPAH will focus the Cyberpunk game window, take a screenshot, and look for key p
 breach protocol screen (such as the text, code matrix, sequences, and buffer size).
 If these elements are found, CPAH will display these elements on the UI.
 
-CPAH will try to find the shortest solution from all the given targets.
+CPAH will try to find the shortest solution from all the given daemons.
 If a solution is found and your buffer size is large enough, it will display the solution
-over the matrix, as well as the list of targets to the right:
+over the matrix, as well as the list of daemons to the right:
 
 !!! note
     Analysis works best if you are running your game at 1080p. If you are running at a lower
@@ -69,21 +69,21 @@ over the matrix, as well as the list of targets to the right:
 
 ![solution](media/usage_01_solution.png)
 
-If a solution is found but it is too long, you can click on the targets on the right to choose
-which targets you want to keep, and which ones to ignore:
+If a solution is found but it is too long, you can click on the daemons on the right to choose
+which daemons you want to keep, and which ones to ignore:
 
-![invalid_targets](media/usage_02_invalid_targets.png)
-![valid_targets](media/usage_03_valid_targets.png)
+![invalid_daemons](media/usage_02_invalid_daemons.png)
+![valid_daemons](media/usage_03_valid_daemons.png)
 
 If you have configured CPAH to enable automatic autohacking, autohacking will begin immediately
-after analysis if a solution can be found for all targets.
+after analysis if a solution can be found for all daemons.
 
 ### Autohacking
 
 If CPAH found a valid solution, autohacking will become available. Clicking the `Autohack`
 button will focus the Cyberpunk game window and press a combination of
 ++up++, ++down++, ++left++, ++right++, and ++f++ keys to automatically solve the minigame for you
-based on the targets you selected.
+based on the daemons you selected.
 
 !!! warning
     **It is very important that you do not move your mouse while CPAH is autohacking!**
@@ -134,8 +134,8 @@ Here is a screenshot with elements labeled:
 | Red    | Core text elements    | 0.8               |
 | Orange | Matrix codes          | 0.8               |
 | Cyan   | Buffer boxes          | 0.7               |
-| Blue   | Target sequence codes | 0.7               |
-| Purple | Target names          | 0.8               |
+| Blue   | Daemon sequence codes | 0.7               |
+| Purple | Daemon names          | 0.8               |
 
 The defaults are values that work well if playing the game at 1080p.
 The lower the resolution, the lower the detection threshold for certain elements need to be.
@@ -145,53 +145,6 @@ so you may need to play around with them and see what works for you.
 !!! note
     Buffer box detection is the hardest at lower resolutions -- sometimes lowering the detection
     for buffer boxes doesn't help. In this case, you can set a buffer size override instead.
-
-## Running from source
-
-If you'd like to run CPAH from source and you're on Windows,
-install [git](https://git-scm.com/download/win){target=_blank} and
-[Python 3.7](https://www.python.org/downloads/release/python-379/){target=_blank},
-then execute the following in PowerShell (CMD should work but we live in the future):
-
-```powershell
-PS> git clone https://gitlab.com/jkchen2/cpah.git
-PS> cd cpah
-PS> python -m pip install poetry
-PS> python -m poetry install
-PS> python -m poetry shell
-PS> python entrypoint.py
-```
-
-### Linting
-
-To lint code, follow the above steps for running from source (sans the last line), and run:
-
-```powershell
-PS> poetry install --extras lint
-PS> black cpah tests
-PS> mypy cpah tests
-```
-
-### Testing
-
-To run tests, follow the above steps for running from source (sans the last line), and run:
-
-```powershell
-PS> poetry install --extras test
-PS> pytest
-```
-
-### Documentation
-
-To build docs, follow the above steps for running from source (sans the last line), and run:
-
-```powershell
-PS> poetry install --extras docs
-PS> mkdocs serve
-```
-
-Then visit [http://localhost:8000](http://localhost:8000){target=_blank}
-for the [MkDocs](https://www.mkdocs.org/){target=_blank} generated documentation.
 
 ## Debugging
 
