@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>520</width>
-    <height>480</height>
+    <height>520</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -16,11 +16,21 @@
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
+  <property name="styleSheet">
+   <string notr="true">* {
+	font-size: 11px;
+}
+
+QCheckBox::indicator {
+     width: 15px;
+     height: 15px;
+}</string>
+  </property>
   <widget class="QLabel" name="helpTextLabel">
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>450</y>
+     <y>490</y>
      <width>341</width>
      <height>21</height>
     </rect>
@@ -42,7 +52,7 @@
    <property name="geometry">
     <rect>
      <x>440</x>
-     <y>450</y>
+     <y>490</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -55,7 +65,7 @@
    <property name="geometry">
     <rect>
      <x>360</x>
-     <y>450</y>
+     <y>490</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -70,7 +80,7 @@
      <x>5</x>
      <y>5</y>
      <width>511</width>
-     <height>441</height>
+     <height>481</height>
     </rect>
    </property>
    <property name="styleSheet">
@@ -150,7 +160,7 @@
        </rect>
       </property>
       <property name="text">
-       <string>This allows you to press a hotkey sequence to start analysis, which is useful if you want to keep the game focused. Leave the field blank to disable the hotkey.</string>
+       <string>This allows you to press a hotkey sequence to start analysis, which is useful if you want to keep the game focused. Clear the field to disable the hotkey.</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>
@@ -161,9 +171,12 @@
        <rect>
         <x>10</x>
         <y>20</y>
-        <width>461</width>
+        <width>466</width>
         <height>20</height>
        </rect>
+      </property>
+      <property name="placeholderText">
+       <string>Example: control + shift + h</string>
       </property>
      </widget>
     </widget>
@@ -202,14 +215,14 @@
        </rect>
       </property>
       <property name="text">
-       <string>This enables automatically starting the autohack after analysis if all found targets can be solved within the limits of the user's buffer size.</string>
+       <string>This enables automatically starting the autohack after analysis if all found daemons can be solved within the limits of the user's buffer size, or if force autohacking is enabled.</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>
       </property>
      </widget>
     </widget>
-    <widget class="QGroupBox" name="groupBox_5">
+    <widget class="QGroupBox" name="groupBox_11">
      <property name="geometry">
       <rect>
        <x>10</x>
@@ -219,14 +232,14 @@
       </rect>
      </property>
      <property name="title">
-      <string>Autohack keypress delay</string>
+      <string>Game focus delay</string>
      </property>
-     <widget class="QSpinBox" name="autohackKeypressDelaySpinBox">
+     <widget class="QSpinBox" name="focusDelaySpinBox">
       <property name="geometry">
        <rect>
         <x>10</x>
         <y>20</y>
-        <width>71</width>
+        <width>91</width>
         <height>22</height>
        </rect>
       </property>
@@ -234,23 +247,29 @@
        <string> ms</string>
       </property>
       <property name="minimum">
-       <number>10</number>
+       <number>50</number>
       </property>
       <property name="maximum">
-       <number>100</number>
+       <number>10000</number>
+      </property>
+      <property name="singleStep">
+       <number>50</number>
+      </property>
+      <property name="value">
+       <number>400</number>
       </property>
      </widget>
-     <widget class="QLabel" name="label_4">
+     <widget class="QLabel" name="label_16">
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>40</y>
+        <y>50</y>
         <width>471</width>
-        <height>51</height>
+        <height>31</height>
        </rect>
       </property>
       <property name="text">
-       <string>Delay between autohack keypresses. Increase this if you get below 60 FPS on the breach protocol screen to make autohacking more consistent.</string>
+       <string>The amount of time CPAH will wait after trying to focus the game window before starting analysis or autohacking. Increase if it takes a long time to switch to the game window.</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>
@@ -258,7 +277,7 @@
      </widget>
     </widget>
    </widget>
-   <widget class="QWidget" name="tab_2">
+   <widget class="QWidget" name="detectionTab">
     <attribute name="title">
      <string>Detection Settings</string>
     </attribute>
@@ -434,7 +453,7 @@
        <enum>Qt::Vertical</enum>
       </property>
      </widget>
-     <widget class="QDoubleSpinBox" name="targetSequenceSpinBox">
+     <widget class="QDoubleSpinBox" name="daemonSequenceSpinBox">
       <property name="geometry">
        <rect>
         <x>180</x>
@@ -453,7 +472,7 @@
        <double>0.100000000000000</double>
       </property>
      </widget>
-     <widget class="QDoubleSpinBox" name="targetNamesSpinBox">
+     <widget class="QDoubleSpinBox" name="daemonNamesSpinBox">
       <property name="geometry">
        <rect>
         <x>420</x>
@@ -482,7 +501,7 @@
        </rect>
       </property>
       <property name="text">
-       <string>Target sequence codes</string>
+       <string>Daemon sequence codes</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -498,7 +517,7 @@
        </rect>
       </property>
       <property name="text">
-       <string>Target names</string>
+       <string>Daemon names</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -515,6 +534,341 @@
       </property>
       <property name="text">
        <string>These are detection thresholds that will be used to parse out certain elements on the breach protocol screen. If you are playing the game at a resolution smaller than 1080p (1920 x 1080), you may need to decrease some of these threshold values.</string>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_8">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>280</y>
+       <width>485</width>
+       <height>91</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Detection language</string>
+     </property>
+     <widget class="QComboBox" name="detectionLanguageComboBox">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>141</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_13">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>50</y>
+        <width>461</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>If Cyberpunk is running in a different language, select it here if available (only supported languages are shown).</string>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="autohackTab">
+    <attribute name="title">
+     <string>Autohack Settings</string>
+    </attribute>
+    <widget class="QGroupBox" name="groupBox_5">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>350</y>
+       <width>485</width>
+       <height>91</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Keypress delay</string>
+     </property>
+     <widget class="QSpinBox" name="autohackKeypressDelaySpinBox">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>91</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="suffix">
+       <string> ms</string>
+      </property>
+      <property name="minimum">
+       <number>10</number>
+      </property>
+      <property name="maximum">
+       <number>100</number>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_4">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>40</y>
+        <width>471</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Delay between autohack keypresses. Increase this if you get below 60 FPS on the breach protocol screen to make autohacking more consistent.</string>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_7">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>250</y>
+       <width>485</width>
+       <height>91</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Activation key</string>
+     </property>
+     <widget class="QLabel" name="label_12">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>50</y>
+        <width>461</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>If you have manually changed your activation (use) key, you can configure CPAH to press that key during the autohacking process.</string>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="activationKeyLineEdit">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>91</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="placeholderText">
+       <string>Example: f</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_9">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>485</width>
+       <height>91</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Force autohack</string>
+     </property>
+     <widget class="QCheckBox" name="forceAutohackCheckBox">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>70</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Enable</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_14">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>40</y>
+        <width>471</width>
+        <height>41</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>If enabled, CPAH will skip daemons until autohacking is possible. The selected daemons below will be removed first. If autohacking is still not possible, then daemons that appear towards the top will be removed one by one until the matrix is solvable.</string>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_10">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>110</y>
+       <width>485</width>
+       <height>131</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Daemon skip priorities</string>
+     </property>
+     <widget class="QCheckBox" name="skipDatamine1CheckBox">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>131</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>DATAMINE_V1</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="skipDatamine2CheckBox">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>40</y>
+        <width>131</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>DATAMINE_V2</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="skipDatamine3CheckBox">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>60</y>
+        <width>131</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>DATAMINE_V3</string>
+      </property>
+     </widget>
+     <widget class="Line" name="line_2">
+      <property name="geometry">
+       <rect>
+        <x>150</x>
+        <y>20</y>
+        <width>21</width>
+        <height>61</height>
+       </rect>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="skipIcepickCheckBox">
+      <property name="geometry">
+       <rect>
+        <x>170</x>
+        <y>20</y>
+        <width>151</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>ICEPICK</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="skipMassVulnerabilityCheckBox">
+      <property name="geometry">
+       <rect>
+        <x>170</x>
+        <y>40</y>
+        <width>151</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>MASS_VULNERABILITY</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="skipCameraShutdownCheckBox">
+      <property name="geometry">
+       <rect>
+        <x>170</x>
+        <y>60</y>
+        <width>151</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>CAMERA SHUTDOWN</string>
+      </property>
+     </widget>
+     <widget class="Line" name="line_3">
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>20</y>
+        <width>21</width>
+        <height>61</height>
+       </rect>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="skipTurretShutdownCheckBox">
+      <property name="geometry">
+       <rect>
+        <x>340</x>
+        <y>20</y>
+        <width>141</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>TURRET SHUTDOWN</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="skipFriendlyTurretsCheckBox">
+      <property name="geometry">
+       <rect>
+        <x>340</x>
+        <y>40</y>
+        <width>141</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>FRIENDLY TURRETS</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_15">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>80</y>
+        <width>471</width>
+        <height>41</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Selected daemons above will be skipped first if force autohack is enabled. If multiple selected daemons show up on the same puzzle, the daemon towards the top is prioritized to be removed first.</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>

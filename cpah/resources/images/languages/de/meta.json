@@ -1,0 +1,15 @@
+{
+    "name": "Deutsch",
+    "daemons": {
+        "datamine_v1": "DATA-MINING_V1",
+        "datamine_v2": "DATA-MINING_V2",
+        "datamine_v3": "DATA-MINING_V3",
+        "icepick": "EISBRECHER",
+        "mass_vulnerability": "MASSEN-VERWUNDBARKEIT",
+        "camera_shutdown": "KAMERA-STILLLEGUNG",
+        "friendly_turrets": "VERBÜNDETE GESCHÜTZTÜRME",
+        "turret_shutdown": "GESCHÜTZTURM-SHUTDOWN",
+        "optics_jammer": "OPTIK-STÖRSENDER",
+        "weapons_jammer": "WAFFEN-STÖRSENDER"
+    }
+}

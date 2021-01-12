@@ -1,0 +1,15 @@
+{
+    "name": "English",
+    "daemons": {
+        "datamine_v1": "DATAMINE_V1",
+        "datamine_v2": "DATAMINE_V2",
+        "datamine_v3": "DATAMINE_V3",
+        "icepick": "ICEPICK",
+        "mass_vulnerability": "MASS VULNERABILITY",
+        "camera_shutdown": "CAMERA SHUTDOWN",
+        "friendly_turrets": "FRIENDLY TURRETS",
+        "turret_shutdown": "TURRET SHUTDOWN",
+        "datamine_copy_malware": "DATAMINE: COPY MALWARE",
+        "neutralize_malware": "NEUTRALIZE MALWARE"
+    }
+}

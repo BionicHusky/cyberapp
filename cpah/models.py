@@ -4,6 +4,7 @@ import traceback
 from typing import Iterable, List, Optional, Tuple
 
 import numpy  # type: ignore
+import pyautogui  # type: ignore
 import pydantic
 import system_hotkey  # type: ignore
 
@@ -21,7 +22,7 @@ class Config(pydantic.BaseSettings):
     )
     auto_autohack: bool = pydantic.Field(
         False,
-        description="Run autohacking automatically if all targets can be obtained",
+        description="Run autohacking automatically if all daemons can be obtained",
     )
     enable_beeps: bool = pydantic.Field(
         False, description="Allow for beep notifications"
@@ -29,11 +30,11 @@ class Config(pydantic.BaseSettings):
     analysis_hotkey: List[str] = pydantic.Field(
         ["control", "shift", "h"], description="Hotkey for kicking off analysis"
     )
-    autohack_keypress_delay: int = pydantic.Field(
-        17,
-        description="Milisecond delay between keypresses during the autohack",
-        ge=10,
-        le=100,
+    game_focus_delay: int = pydantic.Field(
+        400,
+        description="Amount of milliseconds to wait after the game is focused",
+        ge=50,
+        le=10000,
     )
     buffer_size_override: int = pydantic.Field(
         0, description="Buffer size manual override", ge=0, le=10
@@ -56,9 +57,9 @@ class Config(pydantic.BaseSettings):
         gt=0.0,
         lt=1.0,
     )
-    target_detection_threshold: float = pydantic.Field(
+    daemon_detection_threshold: float = pydantic.Field(
         0.8,
-        description="Detection threshold for sequence target names",
+        description="Detection threshold for sequence daemon names",
         gt=0.0,
         lt=1.0,
     )
@@ -69,6 +70,24 @@ class Config(pydantic.BaseSettings):
         ),
         gt=0.0,
         lt=1.0,
+    )
+    detection_language: str = pydantic.Field(
+        "English", description="Breach protocol screen language for analysis"
+    )
+    force_autohack: bool = pydantic.Field(
+        False, description="Changes analysis to always present a solvable solution"
+    )
+    daemon_skip_priorities: List[constants.Daemon] = pydantic.Field(
+        list(), description="Daemons to skip first during a forced autohack"
+    )
+    autohack_activation_key: str = pydantic.Field(
+        "f", description="Key to press for autohacking activations"
+    )
+    autohack_keypress_delay: int = pydantic.Field(
+        17,
+        description="Milisecond delay between keypresses during the autohack",
+        ge=10,
+        le=100,
     )
 
     @pydantic.validator("analysis_hotkey")
@@ -89,6 +108,20 @@ class Config(pydantic.BaseSettings):
                 raise ValueError(f"Analysis hotkey sequnece invalid: {exception}")
         return value
 
+    @pydantic.validator("detection_language")
+    def detection_language_validator(cls, value: str) -> str:
+        if value not in constants.TEMPLATE_LANGUAGE_DATA:
+            raise ValueError(f"Detection language {value} is not supported")
+        return value
+
+    @pydantic.validator("autohack_activation_key")
+    def autohack_activation_key_validator(cls, value: str) -> str:
+        if not value:
+            raise ValueError("Key must be defined")
+        if value not in pyautogui.KEY_NAMES:
+            raise ValueError(f"{value} is not a valid key")
+        return value
+
 
 @dataclasses.dataclass
 class ScreenshotData:
@@ -101,7 +134,8 @@ class BreachProtocolData:
     matrix_size: int
     buffer_size: int
     sequences: List[List[int]]
-    targets: List[str]
+    daemons: List[Optional[constants.Daemon]]
+    daemon_names: List[str]
 
 
 @dataclasses.dataclass
@@ -109,7 +143,7 @@ class ScreenBounds:
     code_matrix: Tuple[Tuple[int, int], Tuple[int, int]]
     buffer_box: Tuple[Tuple[int, int], Tuple[int, int]]
     sequences: Tuple[Tuple[int, int], Tuple[int, int]]
-    targets: Tuple[Tuple[int, int], Tuple[int, int]]
+    daemons: Tuple[Tuple[int, int], Tuple[int, int]]
 
 
 @dataclasses.dataclass
@@ -125,6 +159,7 @@ class SequencePathData:
     shortest_solution: Optional[Tuple[int, ...]]
     shortest_solution_path: Optional[Tuple[Tuple[int, int], ...]]
     solution_valid: bool
+    computationally_complex: bool
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
@@ -137,6 +172,14 @@ class Sequence:
 class ConvertedSequence:
     data: Tuple[int, ...]
     contiguous_block_indices: Tuple[int, ...]
+
+
+@dataclasses.dataclass
+class SequenceSelectionData:
+    daemon: Optional[constants.Daemon]
+    daemon_name: str
+    sequence: Tuple[int, ...]
+    selected: bool
 
 
 class Error:
