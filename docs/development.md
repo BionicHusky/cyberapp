@@ -70,8 +70,9 @@ Currently, the following analysis languages are supported (not all daemons may b
 
 | Language     | Notes                                            |
 | ------------ | ------------------------------------------------ |
-| English      | Missing legendary daemons                        |
-| 简体中文 | Missing legendary daemons and some quest daemons |
+| Deutsch      | Missing some quest daemons                       |
+| English      |                                                  |
+| 简体中文 | Missing some quest daemons                       |
 
 In order to add new language support (or augment existing support),
 several template images will need to be saved for each part of the breach protocol screen,
