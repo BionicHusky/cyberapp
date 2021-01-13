@@ -120,8 +120,8 @@ Daemon filenames:
 | `daemon_camera_shutdown.png`       | ![camera_shutdown](media/template_examples/daemon_camera_shutdown.png)             | Perk unlocked daemon |
 | `daemon_friendly_turrets.png`      | ![friendly_turrets](media/template_examples/daemon_friendly_turrets.png)           | Perk unlocked daemon |
 | `daemon_turret_shutdown.png`       | ![turret_shutdown](media/template_examples/daemon_turret_shutdown.png)             | Perk unlocked daemon |
-| `daemon_optics_jammer.png`         | n/a                                                                                | Legendary daemon     |
-| `daemon_weapons_jammer.png`        | n/a                                                                                | Legendary daemon     |
+| `daemon_optics_jammer.png`         | ![optics_jammer](media/template_examples/daemon_optics_jammer.png)                 | Legendary daemon     |
+| `daemon_weapons_jammer.png`        | ![weapons_jammer](media/template_examples/daemon_weapons_jammer.png)               | Legendary daemon     |
 | `daemon_datamine_copy_malware.png` | ![datamine_copy_malware](media/template_examples/daemon_datamine_copy_malware.png) | Quest daemon         |
 | `daemon_neutralize_malware.png`    | ![neutralize_malware](media/template_examples/daemon_neutralize_malware.png)       | Quest daemon         |
 
@@ -155,7 +155,8 @@ Code filenames:
 
 In addition to the images described above, a metadata file needs to be written, named `meta.json`.
 This file should contain the name of the language that shows up in the UI, as well as the
-text content for the daemons of the template images. For example:
+text content for the daemons of the template images. Like before, these translations aren't
+mandatory, but should be provided if possible. For example:
 
 === "**`meta.json`** (English)"
     ```json
@@ -170,8 +171,10 @@ text content for the daemons of the template images. For example:
             "camera_shutdown": "CAMERA SHUTDOWN",
             "friendly_turrets": "FRIENDLY TURRETS",
             "turret_shutdown": "TURRET SHUTDOWN",
+            "optics_jammer": "OPTICS JAMMER",
+            "weapons_jammer": "WEAPONS JAMMER",
             "datamine_copy_malware": "DATAMINE: COPY MALWARE",
-            "neutralize_malware": "NEUTRALIZE MALWARE",
+            "neutralize_malware": "NEUTRALIZE MALWARE"
         }
     }
     ```
@@ -188,7 +191,9 @@ text content for the daemons of the template images. For example:
             "mass_vulnerability": "集体薄弱",
             "camera_shutdown": "摄像头关闭",
             "friendly_turrets": "友方炮塔",
-            "turret_shutdown": "炮塔关闭"
+            "turret_shutdown": "炮塔关闭",
+            "optics_jammer": "义眼妨碍",
+            "weapons_jammer": "武器妨害"
         }
     }
     ```

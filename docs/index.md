@@ -72,8 +72,7 @@ over the matrix, as well as the list of daemons to the right:
 If a solution is found but it is too long, you can click on the daemons on the right to choose
 which daemons you want to keep, and which ones to ignore:
 
-![invalid_daemons](media/usage_02_invalid_daemons.png)
-![valid_daemons](media/usage_03_valid_daemons.png)
+![toggle_daemons](media/usage_02_toggle_daemons.gif)
 
 If you have configured CPAH to enable automatic autohacking, autohacking will begin immediately
 after analysis if a solution can be found for all daemons.
@@ -94,13 +93,28 @@ based on the daemons you selected.
     If you are running Cyberpunk as an administrator, you will also need to run CPAH as an
     administrator, otherwise autohacking will not work.
 
+#### Forced autohacking
+
+Sometimes, you want to have CPAH automatically deselect daemons to always produce a
+solvable puzzle after analysis. Force autohacking allows for this.
+Additionally, you can choose which daemons to prioritize to be deselected.
+
+Lastly, if you enable forced autohacking and you run analysis on a breach protocol puzzle
+composed of only datamine daemons, CPAH will try to maximize cash and component rewards.
+
 ### Configuration
 
 CPAH can be configured to be more friendly for single monitor users, and for those running
 Cyberpunk at a resolution smaller than 1080p.
 
-![configuration_interface](media/usage_04_configuration_interface.png)
-![configuration_detection](media/usage_05_configuration_detection.png)
+=== "Interface Settings"
+    ![configuration_interface](media/usage_03_interface_settings.png)
+
+=== "Detection Settings"
+    ![configuration_detection](media/usage_04_detection_settings.png)
+
+=== "Autohack Settings"
+    ![configuration_detection](media/usage_05_autohack_settings.png)
 
 Each section in the configuration screen has a small section detailing what it does, which
 should provide enough information to be self-explanatory. However, here are a few more details
