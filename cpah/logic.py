@@ -864,6 +864,9 @@ def calculate_sequence_path_data(
                 if not solution_valid or shorter_than_current_best:
                     shortest_solution_path = solution_path
                     solution_valid = True
+                    ## Skip trying to find other solutions, just find one that works
+                    if computationally_complex:
+                        break
             elif not solution_valid and shorter_than_current_best:
                 shortest_solution_path = solution_path
 
