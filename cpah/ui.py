@@ -158,7 +158,8 @@ class SolverWorker(Worker):
             self.matrix_overlay_image_signal.emit(matrix_overlay_image)  # type: ignore
         if sequence_path_data.solution_valid:
             buffer_sequence_image = logic.generate_buffer_sequence_image(
-                sequence_path_data.shortest_solution  # type: ignore
+                breach_protocol_data.buffer_size,
+                sequence_path_data.shortest_solution,  # type: ignore
             )
             self.buffer_overlay_image_signal.emit(buffer_sequence_image)  # type: ignore
             self.sequence_path_data_available_signal.emit(sequence_path_data)  # type: ignore

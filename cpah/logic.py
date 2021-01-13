@@ -76,7 +76,7 @@ def convert_code(code: Iterable[int]) -> Tuple[str, ...]:
 
 def generate_matrix_image(image_size: int, matrix_data: List[List[int]]) -> Image.Image:
     """Generates a matrix image of codes to be displayed in the GUI."""
-    matrix_image = Image.new("RGBA", (image_size,) * 2, color=(0, 0, 0, 0))
+    matrix_image = Image.new("RGBA", (image_size,) * 2, color=(0,) * 4)
     for column_index, column_data in enumerate(matrix_data):
         for row_index, code in enumerate(column_data):
             matrix_image.alpha_composite(
@@ -94,7 +94,7 @@ def generate_matrix_image(image_size: int, matrix_data: List[List[int]]) -> Imag
 def generate_sequence_path_image(
     image_size: int, sequence_path: Tuple[Tuple[int, int], ...], valid_path: bool
 ) -> Image.Image:
-    sequence_path_image = Image.new("RGBA", (image_size,) * 2, color=(0, 0, 0, 0))
+    sequence_path_image = Image.new("RGBA", (image_size,) * 2, color=(0,) * 4)
     offset = int(constants.MATRIX_IMAGE_SIZE / 2) - 1  ## lol
     box_offset = int(constants.SEQUENCE_PATH_IMAGE_BOX_SIZE / 2)
     draw = ImageDraw.Draw(sequence_path_image)
@@ -161,11 +161,36 @@ def generate_sequence_path_image(
     return sequence_path_image
 
 
+def _buffer_base_generator(buffer_size: int) -> Image.Image:
+    """Helper for creating buffer box base images."""
+    full_image_width = max(
+        constants.MAXIMUM_BUFFER_IMAGE_LENGTH,
+        buffer_size * constants.BUFFER_BOX_IMAGE_SIZE
+        + (buffer_size - 1) * constants.BUFFER_IMAGE_SPACING,
+    )
+    return Image.new(
+        "RGBA",
+        (full_image_width, constants.BUFFER_BOX_IMAGE_SIZE),
+        color=(0,) * 4,
+    )
+
+
+def _buffer_base_resizer(buffer_image: Image.Image) -> Image.Image:
+    """Helper for resizing buffer box base images to the maximum length."""
+    if buffer_image.size[0] > constants.MAXIMUM_BUFFER_IMAGE_LENGTH:
+        ratio = constants.MAXIMUM_BUFFER_IMAGE_LENGTH / buffer_image.size[0]
+        buffer_image = buffer_image.resize(
+            (
+                constants.MAXIMUM_BUFFER_IMAGE_LENGTH,
+                round(ratio * constants.BUFFER_BOX_IMAGE_SIZE),
+            )
+        )
+    return buffer_image
+
+
 def generate_buffer_boxes_image(buffer_size: int) -> Image.Image:
     """Creates the buffer boxes base image."""
-    buffer_boxes_image = Image.new(
-        "RGBA", constants.BUFFER_IMAGE_DIMENSIONS, color=(0, 0, 0, 0)
-    )
+    buffer_boxes_image = _buffer_base_generator(buffer_size)
 
     for box_index in range(buffer_size):
         buffer_boxes_image.alpha_composite(
@@ -173,14 +198,14 @@ def generate_buffer_boxes_image(buffer_size: int) -> Image.Image:
             dest=(constants.BUFFER_COMPOSITE_DISTANCE * box_index, 0),
         )
 
-    return buffer_boxes_image
+    return _buffer_base_resizer(buffer_boxes_image)
 
 
-def generate_buffer_sequence_image(sequence: Tuple[int, ...]) -> Image.Image:
+def generate_buffer_sequence_image(
+    buffer_size: int, sequence: Tuple[int, ...]
+) -> Image.Image:
     """Creates the sequence of codes for the buffer."""
-    buffer_sequence_image = Image.new(
-        "RGBA", constants.BUFFER_IMAGE_DIMENSIONS, color=(0, 0, 0, 0)
-    )
+    buffer_sequence_image = _buffer_base_generator(buffer_size)
 
     draw = ImageDraw.Draw(buffer_sequence_image)
     for index, code in enumerate(sequence):
@@ -196,7 +221,7 @@ def generate_buffer_sequence_image(sequence: Tuple[int, ...]) -> Image.Image:
             constants.BUFFER_CODE_IMAGES[code], dest=(x_offset, 0)
         )
 
-    return buffer_sequence_image
+    return _buffer_base_resizer(buffer_sequence_image)
 
 
 def _focus_game_window(config: models.Config) -> int:

@@ -516,6 +516,22 @@ screenshot_test_data = [
         ],
         detection_language="\u7b80\u4f53\u4e2d\u6587",
     ),
+    ScreenshotTestCase(
+        test_id="Standard size, 9 buffer size, prehacked",
+        screenshot_name="9.png",
+        matrix_data=[
+            [3, 2, 2, 2, 4, 3, 4],
+            [0, 4, 1, 5, 1, 0, 3],
+            [1, 2, 1, 4, 4, 3, 3],
+            [1, 4, 5, 0, 4, 1, 3],
+            [1, 0, 3, 1, 1, 1, 1],
+            [5, 4, 2, 5, 2, 0, 3],
+            [4, 0, 1, 5, 0, 5, 2],
+        ],
+        buffer_size=9,
+        sequences=[[2, 3]],
+        daemon_names=["MASS VULNERABILITY"],
+    ),
 ]
 
 
