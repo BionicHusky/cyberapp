@@ -709,7 +709,7 @@ QCheckBox::indicator {
        </rect>
       </property>
       <property name="text">
-       <string>If enabled, CPAH will skip daemons until autohacking is possible. The selected daemons below will be removed first. If autohacking is still not possible, then daemons that appear towards the top will be removed one by one until the matrix is solvable.</string>
+       <string>If enabled, CPAH will deselect daemons until autohacking is possible. The selected daemons below will be removed first. If autohacking is still not possible, then daemons that appear towards the top will be removed one by one until the matrix is solvable.</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>
@@ -726,7 +726,7 @@ QCheckBox::indicator {
       </rect>
      </property>
      <property name="title">
-      <string>Daemon skip priorities</string>
+      <string>Daemon deselect priorities</string>
      </property>
      <widget class="QCheckBox" name="skipDatamine1CheckBox">
       <property name="geometry">
@@ -868,7 +868,7 @@ QCheckBox::indicator {
        </rect>
       </property>
       <property name="text">
-       <string>Selected daemons above will be skipped first if force autohack is enabled. If multiple selected daemons show up on the same puzzle, the daemon towards the top is prioritized to be removed first.</string>
+       <string>Selected daemons above will be deselected first if force autohack is enabled. If multiple selected daemons show up on the same puzzle, the daemon towards the top is prioritized to be removed first.</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>
