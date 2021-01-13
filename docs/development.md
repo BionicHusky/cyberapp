@@ -46,7 +46,7 @@ To run tests, follow the above steps for running from source (sans the last line
 
 ```ps1
 PS> poetry install --extras test
-PS> pytest
+PS> pytest --black --mypy cpah tests
 ```
 
 ### Documentation
