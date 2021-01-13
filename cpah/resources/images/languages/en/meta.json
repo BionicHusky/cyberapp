@@ -9,6 +9,8 @@
         "camera_shutdown": "CAMERA SHUTDOWN",
         "friendly_turrets": "FRIENDLY TURRETS",
         "turret_shutdown": "TURRET SHUTDOWN",
+        "optics_jammer": "OPTICS JAMMER",
+        "weapons_jammer": "WEAPONS JAMMER",
         "datamine_copy_malware": "DATAMINE: COPY MALWARE",
         "neutralize_malware": "NEUTRALIZE MALWARE"
     }

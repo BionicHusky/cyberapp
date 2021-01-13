@@ -8,6 +8,8 @@
         "mass_vulnerability": "集体薄弱",
         "camera_shutdown": "摄像头关闭",
         "friendly_turrets": "友方炮塔",
-        "turret_shutdown": "炮塔关闭"
+        "turret_shutdown": "炮塔关闭",
+        "optics_jammer": "义眼妨碍",
+        "weapons_jammer": "武器妨害"
     }
 }

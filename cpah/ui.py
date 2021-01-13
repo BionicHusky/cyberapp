@@ -870,6 +870,8 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
         constants.Daemon.CAMERA_SHUTDOWN: "skipCameraShutdownCheckBox",
         constants.Daemon.TURRET_SHUTDOWN: "skipTurretShutdownCheckBox",
         constants.Daemon.FRIENDLY_TURRETS: "skipFriendlyTurretsCheckBox",
+        constants.Daemon.OPTICS_JAMMER: "skipOpticsJammerCheckBox",
+        constants.Daemon.WEAPONS_JAMMER: "skipWeaponsJammerCheckBox",
     }
 
     def __init__(self, parent_widget: CPAH):

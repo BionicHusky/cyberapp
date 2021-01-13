@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>520</width>
-    <height>520</height>
+    <height>540</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -30,7 +30,7 @@ QCheckBox::indicator {
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>490</y>
+     <y>510</y>
      <width>341</width>
      <height>21</height>
     </rect>
@@ -52,7 +52,7 @@ QCheckBox::indicator {
    <property name="geometry">
     <rect>
      <x>440</x>
-     <y>490</y>
+     <y>510</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -65,7 +65,7 @@ QCheckBox::indicator {
    <property name="geometry">
     <rect>
      <x>360</x>
-     <y>490</y>
+     <y>510</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -80,14 +80,14 @@ QCheckBox::indicator {
      <x>5</x>
      <y>5</y>
      <width>511</width>
-     <height>481</height>
+     <height>501</height>
     </rect>
    </property>
    <property name="styleSheet">
     <string notr="true"/>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>2</number>
    </property>
    <widget class="QWidget" name="interfaceTab">
     <attribute name="title">
@@ -588,7 +588,7 @@ QCheckBox::indicator {
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>350</y>
+       <y>370</y>
        <width>485</width>
        <height>91</height>
       </rect>
@@ -636,7 +636,7 @@ QCheckBox::indicator {
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>250</y>
+       <y>270</y>
        <width>485</width>
        <height>91</height>
       </rect>
@@ -722,7 +722,7 @@ QCheckBox::indicator {
        <x>10</x>
        <y>110</y>
        <width>485</width>
-       <height>131</height>
+       <height>151</height>
       </rect>
      </property>
      <property name="title">
@@ -773,7 +773,7 @@ QCheckBox::indicator {
         <x>150</x>
         <y>20</y>
         <width>21</width>
-        <height>61</height>
+        <height>81</height>
        </rect>
       </property>
       <property name="orientation">
@@ -783,9 +783,9 @@ QCheckBox::indicator {
      <widget class="QCheckBox" name="skipIcepickCheckBox">
       <property name="geometry">
        <rect>
-        <x>170</x>
-        <y>20</y>
-        <width>151</width>
+        <x>10</x>
+        <y>80</y>
+        <width>131</width>
         <height>17</height>
        </rect>
       </property>
@@ -797,7 +797,7 @@ QCheckBox::indicator {
       <property name="geometry">
        <rect>
         <x>170</x>
-        <y>40</y>
+        <y>20</y>
         <width>151</width>
         <height>17</height>
        </rect>
@@ -810,7 +810,7 @@ QCheckBox::indicator {
       <property name="geometry">
        <rect>
         <x>170</x>
-        <y>60</y>
+        <y>40</y>
         <width>151</width>
         <height>17</height>
        </rect>
@@ -825,7 +825,7 @@ QCheckBox::indicator {
         <x>320</x>
         <y>20</y>
         <width>21</width>
-        <height>61</height>
+        <height>81</height>
        </rect>
       </property>
       <property name="orientation">
@@ -835,9 +835,9 @@ QCheckBox::indicator {
      <widget class="QCheckBox" name="skipTurretShutdownCheckBox">
       <property name="geometry">
        <rect>
-        <x>340</x>
-        <y>20</y>
-        <width>141</width>
+        <x>170</x>
+        <y>60</y>
+        <width>151</width>
         <height>17</height>
        </rect>
       </property>
@@ -848,9 +848,9 @@ QCheckBox::indicator {
      <widget class="QCheckBox" name="skipFriendlyTurretsCheckBox">
       <property name="geometry">
        <rect>
-        <x>340</x>
-        <y>40</y>
-        <width>141</width>
+        <x>170</x>
+        <y>80</y>
+        <width>151</width>
         <height>17</height>
        </rect>
       </property>
@@ -862,7 +862,7 @@ QCheckBox::indicator {
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>80</y>
+        <y>100</y>
         <width>471</width>
         <height>41</height>
        </rect>
@@ -872,6 +872,32 @@ QCheckBox::indicator {
       </property>
       <property name="wordWrap">
        <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="skipOpticsJammerCheckBox">
+      <property name="geometry">
+       <rect>
+        <x>340</x>
+        <y>20</y>
+        <width>131</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>OPTICS JAMMER</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="skipWeaponsJammerCheckBox">
+      <property name="geometry">
+       <rect>
+        <x>340</x>
+        <y>40</y>
+        <width>131</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>WEAPONS JAMMER</string>
       </property>
      </widget>
     </widget>
