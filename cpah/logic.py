@@ -340,7 +340,7 @@ def parse_screen_bounds(
         )
 
     ## Assign coordinate elements
-    height = buffer_template.shape[1::-1][1]
+    height = buffer_template.shape[0]
     code_matrix_x_bottom = sequences_x_top = buffer_x_top = location[0]
     buffer_y_top = location[1] + height
 
@@ -359,7 +359,8 @@ def parse_screen_bounds(
         )
 
     ## Assign coordinate elements
-    width, height = sequences_template.shape[1::-1]
+    width = constants.BASE_SEQUENCE_TEMPLATE_WIDTH
+    height = sequences_template.shape[0]
     buffer_y_bottom = location[1]
     code_matrix_y_top = sequences_y_top = daemons_y_top = location[1] + height
     daemons_x_top = sequences_x_bottom = location[0] + width
