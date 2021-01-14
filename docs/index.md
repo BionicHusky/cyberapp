@@ -93,15 +93,6 @@ based on the daemons you selected.
     If you are running Cyberpunk as an administrator, you will also need to run CPAH as an
     administrator, otherwise autohacking will not work.
 
-#### Forced autohacking
-
-Sometimes, you want to have CPAH automatically deselect daemons to always produce a
-solvable puzzle after analysis. Force autohacking allows for this.
-Additionally, you can choose which daemons to prioritize to be deselected.
-
-Lastly, if you enable forced autohacking and you run analysis on a breach protocol puzzle
-composed of only datamine daemons, CPAH will try to maximize cash and component rewards.
-
 ### Configuration
 
 CPAH can be configured to be more friendly for single monitor users, and for those running
@@ -116,7 +107,7 @@ Cyberpunk at a resolution smaller than 1080p.
 === "Autohack Settings"
     ![configuration_detection](media/usage_05_autohack_settings.png)
 
-Each section in the configuration screen has a small section detailing what it does, which
+Each section in the configuration screen has a small description detailing what it does, which
 should provide enough information to be self-explanatory. However, here are a few more details
 for some specific options:
 
@@ -143,7 +134,7 @@ Here is a screenshot with elements labeled:
 
 ![detection_legend](media/usage_06_detection_legend.png)
 
-| Color  | Description           | Detection default |
+| Color  | Description           | Default threshold |
 | ------ | --------------------- | ----------------- |
 | Red    | Core text elements    | 0.8               |
 | Orange | Matrix codes          | 0.8               |
@@ -159,6 +150,15 @@ so you may need to play around with them and see what works for you.
 !!! note
     Buffer box detection is the hardest at lower resolutions -- sometimes lowering the detection
     for buffer boxes doesn't help. In this case, you can set a buffer size override instead.
+
+#### Forced autohacking
+
+Sometimes, you want to have CPAH automatically deselect daemons to always produce a
+solvable puzzle after analysis. Force autohacking allows for this.
+Additionally, you can choose which daemons to keep selected.
+
+Lastly, if you enable forced autohacking and you run analysis on a breach protocol puzzle
+composed of only datamine daemons, CPAH will try to maximize cash and component rewards.
 
 ## Debugging
 
@@ -194,3 +194,10 @@ window and is never sent anywhere (i.e. it is processed locally on your machine)
 you truly don't want to have CPAH take a screenshot, you can save a screenshot you take yourself
 of the breach protocol screen (fullscreen works best), then right click the `Analyze` button
 and select the screenshot.
+
+**Q: Can you support other languages?**
+
+A: Unfortunately, I'm not willing to put in the time to support many languages myself.
+However, I have added documentation on how you can help contribute to the project and add
+the language data yourself [here](development/#adding-languages).
+I will personally try to maintain the English and Simplified Chinese support.

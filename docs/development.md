@@ -103,28 +103,36 @@ Below is an example of a proper screenshot with template image regions labeled:
 | Orange | `code_<index>.png`       | ![code_0](media/template_examples/code_0.png)                         | May be optional -- see below           |
 | Blue   | `code_<index>_small.png` | ![code_0_small](media/template_examples/code_0_small.png)             | May be optional -- see below           |
 
+#### Daemons
+
 !!! note
     Not all daemon template images need to be included.
     The common ones and the perk unlocked ones are good to include,
     but CPAH should still be able to handle daemons that aren't included
     by labeling them as "unknown".
 
-Daemon filenames:
+| Filename                           | Image                                                                              | Daemon type              |
+| ---------------------------------- | ---------------------------------------------------------------------------------- | ------------------------ |
+| `daemon_datamine_v1.png`           | ![datamine_v1](media/template_examples/daemon_datamine_v1.png)                     | Common                   |
+| `daemon_datamine_v2.png`           | ![datamine_v2](media/template_examples/daemon_datamine_v2.png)                     | Common                   |
+| `daemon_datamine_v3.png`           | ![datamine_v3](media/template_examples/daemon_datamine_v3.png)                     | Common                   |
+| `daemon_icepick.png`               | ![icepick](media/template_examples/daemon_icepick.png)                             | Common                   |
+| `daemon_mass_vulnerability.png`    | ![mass_vulnerability](media/template_examples/daemon_mass_vulnerability.png)       | Perk unlocked            |
+| `daemon_camera_shutdown.png`       | ![camera_shutdown](media/template_examples/daemon_camera_shutdown.png)             | Perk unlocked            |
+| `daemon_friendly_turrets.png`      | ![friendly_turrets](media/template_examples/daemon_friendly_turrets.png)           | Perk unlocked            |
+| `daemon_turret_shutdown.png`       | ![turret_shutdown](media/template_examples/daemon_turret_shutdown.png)             | Perk unlocked            |
+| `daemon_optics_jammer.png`         | ![optics_jammer](media/template_examples/daemon_optics_jammer.png)                 | Legendary: Reboot Optics |
+| `daemon_weapons_jammer.png`        | ![weapons_jammer](media/template_examples/daemon_weapons_jammer.png)               | Legendary: Weapon Glitch |
+| `daemon_datamine_copy_malware.png` | ![datamine_copy_malware](media/template_examples/daemon_datamine_copy_malware.png) | Quest: The Pickup        |
+| `daemon_neutralize_malware.png`    | ![neutralize_malware](media/template_examples/daemon_neutralize_malware.png)       | Quest: The Pickup        |
+| `daemon_gain_access.png`           | ![gain_access](media/template_examples/daemon_gain_access.png)                     | Quest: Space Oddity      |
 
-| Filename                           | Image                                                                              | Notes                |
-| ---------------------------------- | ---------------------------------------------------------------------------------- | -------------------- |
-| `daemon_datamine_v1.png`           | ![datamine_v1](media/template_examples/daemon_datamine_v1.png)                     | Common daemon        |
-| `daemon_datamine_v2.png`           | ![datamine_v2](media/template_examples/daemon_datamine_v2.png)                     | Common daemon        |
-| `daemon_datamine_v3.png`           | ![datamine_v3](media/template_examples/daemon_datamine_v3.png)                     | Common daemon        |
-| `daemon_icepick.png`               | ![icepick](media/template_examples/daemon_icepick.png)                             | Common daemon        |
-| `daemon_mass_vulnerability.png`    | ![mass_vulnerability](media/template_examples/daemon_mass_vulnerability.png)       | Perk unlocked daemon |
-| `daemon_camera_shutdown.png`       | ![camera_shutdown](media/template_examples/daemon_camera_shutdown.png)             | Perk unlocked daemon |
-| `daemon_friendly_turrets.png`      | ![friendly_turrets](media/template_examples/daemon_friendly_turrets.png)           | Perk unlocked daemon |
-| `daemon_turret_shutdown.png`       | ![turret_shutdown](media/template_examples/daemon_turret_shutdown.png)             | Perk unlocked daemon |
-| `daemon_optics_jammer.png`         | ![optics_jammer](media/template_examples/daemon_optics_jammer.png)                 | Legendary daemon     |
-| `daemon_weapons_jammer.png`        | ![weapons_jammer](media/template_examples/daemon_weapons_jammer.png)               | Legendary daemon     |
-| `daemon_datamine_copy_malware.png` | ![datamine_copy_malware](media/template_examples/daemon_datamine_copy_malware.png) | Quest daemon         |
-| `daemon_neutralize_malware.png`    | ![neutralize_malware](media/template_examples/daemon_neutralize_malware.png)       | Quest daemon         |
+*[Legendary: Reboot Optics]: Obtainable via crafting (may require an edited save file or mods)
+*[Legendary: Weapon Glitch]: Obtainable via crafting
+*[Quest: The Pickup]: Seen when hacking the datashard from Meredith Stout
+*[Quest: Space Oddity]: Seen when hacking the briefcase at the start of the mission
+
+#### Codes
 
 !!! note
     Code images are only required if your language changes the appearance
@@ -139,8 +147,6 @@ Daemon filenames:
     When making code template images, be sure to only use codes
     that aren't under the first row or column highlight.
     ![code_screenshot](media/languages_02_codes.png)
-
-Code filenames:
 
 | Filename (normal) | Filename (small)   | Image (normal)                                | Image (small)                                             |
 | ----------------- | ------------------ | --------------------------------------------- | --------------------------------------------------------- |
@@ -175,7 +181,8 @@ mandatory, but should be provided if possible. For example:
             "optics_jammer": "OPTICS JAMMER",
             "weapons_jammer": "WEAPONS JAMMER",
             "datamine_copy_malware": "DATAMINE: COPY MALWARE",
-            "neutralize_malware": "NEUTRALIZE MALWARE"
+            "neutralize_malware": "NEUTRALIZE MALWARE",
+            "gain_access": "GAIN ACCESS"
         }
     }
     ```
@@ -194,7 +201,8 @@ mandatory, but should be provided if possible. For example:
             "friendly_turrets": "友方炮塔",
             "turret_shutdown": "炮塔关闭",
             "optics_jammer": "义眼妨碍",
-            "weapons_jammer": "武器妨害"
+            "weapons_jammer": "武器妨害",
+            "gain_access": "获取权限"
         }
     }
     ```
