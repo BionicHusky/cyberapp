@@ -1,3 +1,4 @@
+import functools
 import itertools
 import json
 import pathlib
@@ -30,7 +31,7 @@ def _migrate_config(data: Dict) -> Dict:
         data["game_focus_delay"] = 400
         data["detection_language"] = "English"
         data["force_autohack"] = False
-        data["daemon_skip_priorities"] = list()
+        data["daemon_priorities"] = list()
         data["autohack_activation_key"] = "f"
         config_version = data["schema_version"] = 2
 
@@ -74,7 +75,9 @@ def convert_code(code: Iterable[int]) -> Tuple[str, ...]:
     return tuple(constants.CODE_NAMES[it] for it in code)
 
 
-def generate_matrix_image(image_size: int, matrix_data: List[List[int]]) -> Image.Image:
+def generate_matrix_image(
+    image_size: int, matrix_data: Tuple[Tuple[int, ...], ...]
+) -> Image.Image:
     """Generates a matrix image of codes to be displayed in the GUI."""
     matrix_image = Image.new("RGBA", (image_size,) * 2, color=(0,) * 4)
     for column_index, column_data in enumerate(matrix_data):
@@ -390,7 +393,7 @@ def parse_matrix_data(
     config: models.Config,
     screenshot_data: models.ScreenshotData,
     screen_bounds: models.ScreenBounds,
-) -> List[List[int]]:
+) -> Tuple[Tuple[int, ...], ...]:
     """Parses the section of the screenshot to get matrix data."""
     box = screen_bounds.code_matrix
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
@@ -441,7 +444,7 @@ def parse_matrix_data(
                     "Matrix code detection could not detect all codes."
                 )
 
-    return data
+    return tuple(tuple(it) for it in data)
 
 
 def parse_buffer_size_data(
@@ -498,7 +501,7 @@ def parse_sequences_data(
     config: models.Config,
     screenshot_data: models.ScreenshotData,
     screen_bounds: models.ScreenBounds,
-) -> List[List[int]]:
+) -> Tuple[Tuple[int, ...], ...]:
     """Parses the section of the screenshot to get sequences data."""
     box = screen_bounds.sequences
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
@@ -546,7 +549,7 @@ def parse_sequences_data(
                     f"Sequence {sequence_index + 1} could not be parsed correctly."
                 )
 
-    return data
+    return tuple(tuple(it) for it in data)
 
 
 def parse_daemons_data(
@@ -554,7 +557,7 @@ def parse_daemons_data(
     screenshot_data: models.ScreenshotData,
     screen_bounds: models.ScreenBounds,
     sequences_size: int,
-) -> Tuple[List[Optional[constants.Daemon]], List[str]]:
+) -> Tuple[Tuple[Optional[constants.Daemon], ...], Tuple[str, ...]]:
     """Parses the section of the screenshot to get daemons data."""
     box = screen_bounds.daemons
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
@@ -591,7 +594,7 @@ def parse_daemons_data(
         )
 
     LOG.debug(f"Daemon parsing found daemon names: {names}")
-    return daemon_enums, names
+    return tuple(daemon_enums), tuple(names)
 
 
 def force_calculate_sequence_path_data(
@@ -604,62 +607,58 @@ def force_calculate_sequence_path_data(
         breach_protocol_data, tuple(selected_sequence_indices)
     )
 
-    if not sequence_path_data.solution_valid:
-        LOG.debug("Force calculation required")
+    if sequence_path_data.solution_valid:
+        return sequence_path_data, tuple(selected_sequence_indices)
 
-        ## Solution not valid. Start removing configured skippable daemons
-        for daemon_index in selected_sequence_indices[:]:
-            if (
-                breach_protocol_data.daemons[daemon_index]
-                in config.daemon_skip_priorities
-            ):
-                selected_sequence_indices.remove(daemon_index)
-                sequence_path_data = calculate_sequence_path_data(
-                    breach_protocol_data, tuple(selected_sequence_indices)
-                )
-                if sequence_path_data.solution_valid:
-                    break
+    LOG.debug("Force calculation required")
 
-        ## Still not valid. Start removing sequences from the top
+    ## Tries to maximize datamine rewards if all daemons are datamines
+    if (
+        not set(config.daemon_priorities).intersection(constants.DATAMINE_DAEMONS)
+        and set(breach_protocol_data.daemons) == constants.DATAMINE_DAEMONS
+    ):
+        LOG.debug("Detected daemons to all be datamine daemons")
+        original_indices = selected_sequence_indices
+        best_selections: Tuple[Tuple[int, ...], ...] = (
+            (1, 2),
+            (0, 2),
+            (2,),
+            (0, 1),
+            (1,),
+            (0,),
+            tuple(),
+        )
+        for selected_sequence_indices in best_selections:  # type: ignore
+            sequence_path_data = calculate_sequence_path_data(
+                breach_protocol_data, selected_sequence_indices  # type: ignore
+            )
+            if sequence_path_data.solution_valid:
+                break
         else:
+            LOG.warning("Forced datamine autohack couldn't find a solution")
 
-            ## Bit of a hidden feature: datamine reward optimization
-            ## Tries to maximize datamine rewards if all daemons are datamines
+    ## Otherwise, remove daemons one by one until the matrix is solvable
+    else:
+        for daemon_index in selected_sequence_indices[:]:
+            daemon_enum = breach_protocol_data.daemons[daemon_index]
             if (
-                len(breach_protocol_data.sequences) == 3
-                and tuple(selected_sequence_indices) == tuple(range(3))
-                and breach_protocol_data.daemons[2] == constants.Daemon.DATAMINE_V3
+                daemon_enum not in constants.COMMON_DAEMONS
+                or daemon_enum in config.daemon_priorities
             ):
-                LOG.debug("Detected daemons to all be datamine daemons")
-                original_indices = selected_sequence_indices
-                best_selections: Tuple[Tuple[int, ...], ...] = (
-                    (1, 2),
-                    (0, 2),
-                    (2,),
-                    (0, 1),
-                    (1,),
-                    (0,),
-                    tuple(),
-                )
-                for selected_sequence_indices in best_selections:  # type: ignore
-                    sequence_path_data = calculate_sequence_path_data(
-                        breach_protocol_data, selected_sequence_indices  # type: ignore
-                    )
-                    if sequence_path_data.solution_valid:
-                        break
-
-            else:
-                for _ in range(len(selected_sequence_indices)):
-                    selected_sequence_indices = selected_sequence_indices[1:]
-                    sequence_path_data = calculate_sequence_path_data(
-                        breach_protocol_data, tuple(selected_sequence_indices)
-                    )
-                    if sequence_path_data.solution_valid:
-                        break
+                continue
+            selected_sequence_indices.remove(daemon_index)
+            sequence_path_data = calculate_sequence_path_data(
+                breach_protocol_data, tuple(selected_sequence_indices)
+            )
+            if sequence_path_data.solution_valid:
+                break
+        else:
+            LOG.warning("Forced autohack couldn't find a solution")
 
     return sequence_path_data, tuple(selected_sequence_indices)
 
 
+@functools.lru_cache(maxsize=constants.MEMOIZE_SIZE)
 def calculate_sequence_path_data(
     breach_protocol_data: models.BreachProtocolData,
     selected_sequence_indices: Tuple[int, ...],

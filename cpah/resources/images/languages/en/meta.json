@@ -12,6 +12,7 @@
         "optics_jammer": "OPTICS JAMMER",
         "weapons_jammer": "WEAPONS JAMMER",
         "datamine_copy_malware": "DATAMINE: COPY MALWARE",
-        "neutralize_malware": "NEUTRALIZE MALWARE"
+        "neutralize_malware": "NEUTRALIZE MALWARE",
+		"gain_access": "GAIN ACCESS"
     }
 }

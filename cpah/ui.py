@@ -220,7 +220,7 @@ class AnalysisWorker(SolverWorker):
             models.SequenceSelectionData(
                 daemon=daemon,
                 daemon_name=daemon_name,
-                sequence=tuple(sequence),
+                sequence=sequence,
                 selected=False,
             )
             for daemon, daemon_name, sequence in zip(daemons, daemon_names, sequences)
@@ -861,17 +861,17 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
     configuration_screen_open_signal = Signal(bool)
     configuration_changed_signal = Signal()
 
-    _skip_mapping = {
-        constants.Daemon.DATAMINE_V1: "skipDatamine1CheckBox",
-        constants.Daemon.DATAMINE_V2: "skipDatamine2CheckBox",
-        constants.Daemon.DATAMINE_V3: "skipDatamine3CheckBox",
-        constants.Daemon.ICEPICK: "skipIcepickCheckBox",
-        constants.Daemon.MASS_VULNERABILITY: "skipMassVulnerabilityCheckBox",
-        constants.Daemon.CAMERA_SHUTDOWN: "skipCameraShutdownCheckBox",
-        constants.Daemon.TURRET_SHUTDOWN: "skipTurretShutdownCheckBox",
-        constants.Daemon.FRIENDLY_TURRETS: "skipFriendlyTurretsCheckBox",
-        constants.Daemon.OPTICS_JAMMER: "skipOpticsJammerCheckBox",
-        constants.Daemon.WEAPONS_JAMMER: "skipWeaponsJammerCheckBox",
+    _keep_mapping = {
+        constants.Daemon.DATAMINE_V1: "keepDatamine1CheckBox",
+        constants.Daemon.DATAMINE_V2: "keepDatamine2CheckBox",
+        constants.Daemon.DATAMINE_V3: "keepDatamine3CheckBox",
+        constants.Daemon.ICEPICK: "keepIcepickCheckBox",
+        constants.Daemon.MASS_VULNERABILITY: "keepMassVulnerabilityCheckBox",
+        constants.Daemon.CAMERA_SHUTDOWN: "keepCameraShutdownCheckBox",
+        constants.Daemon.TURRET_SHUTDOWN: "keepTurretShutdownCheckBox",
+        constants.Daemon.FRIENDLY_TURRETS: "keepFriendlyTurretsCheckBox",
+        constants.Daemon.OPTICS_JAMMER: "keepOpticsJammerCheckBox",
+        constants.Daemon.WEAPONS_JAMMER: "keepWeaponsJammerCheckBox",
     }
 
     def __init__(self, parent_widget: CPAH):
@@ -928,9 +928,9 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
         self.force_autohack_check_box = self.findChild(
             QCheckBox, "forceAutohackCheckBox"
         )
-        self.skip_daemons: Dict[constants.Daemon, QCheckBox] = dict()
-        for daemon_enum, widget_id in self._skip_mapping.items():
-            self.skip_daemons[daemon_enum] = self.findChild(QCheckBox, widget_id)
+        self.keep_daemons: Dict[constants.Daemon, QCheckBox] = dict()
+        for daemon_enum, widget_id in self._keep_mapping.items():
+            self.keep_daemons[daemon_enum] = self.findChild(QCheckBox, widget_id)
         self.activation_key_line_edit = self.findChild(
             QLineEdit, "activationKeyLineEdit"
         )
@@ -975,8 +975,8 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
 
         ## Autohack settings
         self.force_autohack_check_box.setChecked(config.force_autohack)
-        for daemon_enum, skip_daemon in self.skip_daemons.items():
-            skip_daemon.setChecked(daemon_enum in config.daemon_skip_priorities)
+        for daemon_enum, keep_daemon in self.keep_daemons.items():
+            keep_daemon.setChecked(daemon_enum in config.daemon_priorities)
         self.activation_key_line_edit.setText(config.autohack_activation_key)
         self.autohack_keypress_delay_spin_box.setValue(config.autohack_keypress_delay)
 
@@ -1015,8 +1015,8 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
             test.detection_language = selected_language
             ## Autohack settings
             test.force_autohack = self.force_autohack_check_box.isChecked()
-            test.daemon_skip_priorities = [
-                k for k, v in self.skip_daemons.items() if v.isChecked()
+            test.daemon_priorities = [
+                k for k, v in self.keep_daemons.items() if v.isChecked()
             ]
             test.autohack_activation_key = (
                 self.activation_key_line_edit.text().lower().strip()

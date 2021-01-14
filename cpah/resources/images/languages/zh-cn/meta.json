@@ -10,6 +10,7 @@
         "friendly_turrets": "友方炮塔",
         "turret_shutdown": "炮塔关闭",
         "optics_jammer": "义眼妨碍",
-        "weapons_jammer": "武器妨害"
+        "weapons_jammer": "武器妨害",
+		"gain_access": "获取权限"
     }
 }

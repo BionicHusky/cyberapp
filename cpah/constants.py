@@ -44,6 +44,7 @@ VERSION = (
 )
 MAX_SOLUTION_PATH_LENGTH = 12
 MAX_SIZE_ESTIMATE_THRESHOLD = 3500
+MEMOIZE_SIZE = 100
 
 ## Title used to find the process to screenshot
 GAME_EXECUTABLE_TITLE = "Cyberpunk 2077 (C) 2020 by CD Projekt RED"
@@ -95,6 +96,27 @@ class Daemon(str, enum.Enum):
     WEAPONS_JAMMER = "weapons_jammer"
     DATAMINE_COPY_MALWARE = "datamine_copy_malware"
     NEUTRALIZE_MALWARE = "neutralize_malware"
+    GAIN_ACCESS = "gain_access"
+
+
+DATAMINE_DAEMONS = {
+    Daemon.DATAMINE_V1,
+    Daemon.DATAMINE_V2,
+    Daemon.DATAMINE_V3,
+}
+
+
+COMMON_DAEMONS = DATAMINE_DAEMONS.union(
+    {
+        Daemon.ICEPICK,
+        Daemon.MASS_VULNERABILITY,
+        Daemon.CAMERA_SHUTDOWN,
+        Daemon.FRIENDLY_TURRETS,
+        Daemon.TURRET_SHUTDOWN,
+        Daemon.OPTICS_JAMMER,
+        Daemon.WEAPONS_JAMMER,
+    }
+)
 
 
 class Title(str, enum.Enum):

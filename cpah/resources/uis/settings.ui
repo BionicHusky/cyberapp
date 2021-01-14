@@ -709,7 +709,7 @@ QCheckBox::indicator {
        </rect>
       </property>
       <property name="text">
-       <string>If enabled, CPAH will deselect daemons until autohacking is possible. The selected daemons below will be removed first. If autohacking is still not possible, then daemons that appear towards the top will be removed one by one until the matrix is solvable.</string>
+       <string>If enabled, daemons will be automatically deselected until autohacking is possible after analysis. Daemons that appear towards the top will be removed first. Quest daemons, unknown daemons, and the proritized daemons below will not be automatically deselected.</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>
@@ -726,9 +726,9 @@ QCheckBox::indicator {
       </rect>
      </property>
      <property name="title">
-      <string>Daemon deselect priorities</string>
+      <string>Daemon priorities</string>
      </property>
-     <widget class="QCheckBox" name="skipDatamine1CheckBox">
+     <widget class="QCheckBox" name="keepDatamine1CheckBox">
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -741,7 +741,7 @@ QCheckBox::indicator {
        <string>DATAMINE_V1</string>
       </property>
      </widget>
-     <widget class="QCheckBox" name="skipDatamine2CheckBox">
+     <widget class="QCheckBox" name="keepDatamine2CheckBox">
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -754,7 +754,7 @@ QCheckBox::indicator {
        <string>DATAMINE_V2</string>
       </property>
      </widget>
-     <widget class="QCheckBox" name="skipDatamine3CheckBox">
+     <widget class="QCheckBox" name="keepDatamine3CheckBox">
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -780,7 +780,7 @@ QCheckBox::indicator {
        <enum>Qt::Vertical</enum>
       </property>
      </widget>
-     <widget class="QCheckBox" name="skipIcepickCheckBox">
+     <widget class="QCheckBox" name="keepIcepickCheckBox">
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -793,7 +793,7 @@ QCheckBox::indicator {
        <string>ICEPICK</string>
       </property>
      </widget>
-     <widget class="QCheckBox" name="skipMassVulnerabilityCheckBox">
+     <widget class="QCheckBox" name="keepMassVulnerabilityCheckBox">
       <property name="geometry">
        <rect>
         <x>170</x>
@@ -806,7 +806,7 @@ QCheckBox::indicator {
        <string>MASS_VULNERABILITY</string>
       </property>
      </widget>
-     <widget class="QCheckBox" name="skipCameraShutdownCheckBox">
+     <widget class="QCheckBox" name="keepCameraShutdownCheckBox">
       <property name="geometry">
        <rect>
         <x>170</x>
@@ -832,7 +832,7 @@ QCheckBox::indicator {
        <enum>Qt::Vertical</enum>
       </property>
      </widget>
-     <widget class="QCheckBox" name="skipTurretShutdownCheckBox">
+     <widget class="QCheckBox" name="keepTurretShutdownCheckBox">
       <property name="geometry">
        <rect>
         <x>170</x>
@@ -845,7 +845,7 @@ QCheckBox::indicator {
        <string>TURRET SHUTDOWN</string>
       </property>
      </widget>
-     <widget class="QCheckBox" name="skipFriendlyTurretsCheckBox">
+     <widget class="QCheckBox" name="keepFriendlyTurretsCheckBox">
       <property name="geometry">
        <rect>
         <x>170</x>
@@ -868,13 +868,13 @@ QCheckBox::indicator {
        </rect>
       </property>
       <property name="text">
-       <string>Selected daemons above will be deselected first if force autohack is enabled. If multiple selected daemons show up on the same puzzle, the daemon towards the top is prioritized to be removed first.</string>
+       <string>Selected daemons will never be automatically deselected if force autohack is enabled. If the datamine daemons are left unchecked, CPAH will try to maximize item rewards from them.</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>
       </property>
      </widget>
-     <widget class="QCheckBox" name="skipOpticsJammerCheckBox">
+     <widget class="QCheckBox" name="keepOpticsJammerCheckBox">
       <property name="geometry">
        <rect>
         <x>340</x>
@@ -887,7 +887,7 @@ QCheckBox::indicator {
        <string>OPTICS JAMMER</string>
       </property>
      </widget>
-     <widget class="QCheckBox" name="skipWeaponsJammerCheckBox">
+     <widget class="QCheckBox" name="keepWeaponsJammerCheckBox">
       <property name="geometry">
        <rect>
         <x>340</x>

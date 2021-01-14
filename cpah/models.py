@@ -77,8 +77,8 @@ class Config(pydantic.BaseSettings):
     force_autohack: bool = pydantic.Field(
         False, description="Changes analysis to always present a solvable solution"
     )
-    daemon_skip_priorities: List[constants.Daemon] = pydantic.Field(
-        list(), description="Daemons to skip first during a forced autohack"
+    daemon_priorities: List[constants.Daemon] = pydantic.Field(
+        list(), description="Daemons to always keep during a forced autohack"
     )
     autohack_activation_key: str = pydantic.Field(
         "f", description="Key to press for autohacking activations"
@@ -128,14 +128,14 @@ class ScreenshotData:
     screenshot: numpy.ndarray
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(eq=True, frozen=True)
 class BreachProtocolData:
-    data: List[List[int]]
+    data: Tuple[Tuple[int, ...], ...]
     matrix_size: int
     buffer_size: int
-    sequences: List[List[int]]
-    daemons: List[Optional[constants.Daemon]]
-    daemon_names: List[str]
+    sequences: Tuple[Tuple[int, ...], ...]
+    daemons: Tuple[Optional[constants.Daemon], ...]
+    daemon_names: Tuple[str, ...]
 
 
 @dataclasses.dataclass
