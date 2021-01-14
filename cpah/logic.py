@@ -498,11 +498,15 @@ def parse_buffer_size_data(
     return buffer_size
 
 
-def parse_sequences_data(
+def parse_daemons_data(
     config: models.Config,
     screenshot_data: models.ScreenshotData,
     screen_bounds: models.ScreenBounds,
-) -> Tuple[Tuple[int, ...], ...]:
+) -> Tuple[
+    Tuple[Tuple[int, ...], ...],  ## Sequences
+    Tuple[Optional[constants.Daemon], ...],  ## Daemon enums
+    Tuple[str, ...],  ## Daemon names
+]:
     """Parses the section of the screenshot to get sequences data."""
     box = screen_bounds.sequences
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
@@ -550,52 +554,34 @@ def parse_sequences_data(
                     f"Sequence {sequence_index + 1} could not be parsed correctly."
                 )
 
-    return tuple(tuple(it) for it in data)
+    sequences = tuple(tuple(it) for it in data)
 
-
-def parse_daemons_data(
-    config: models.Config,
-    screenshot_data: models.ScreenshotData,
-    screen_bounds: models.ScreenBounds,
-    sequences_size: int,
-) -> Tuple[Tuple[Optional[constants.Daemon], ...], Tuple[str, ...]]:
-    """Parses the section of the screenshot to get daemons data."""
+    ## Parse daemon data
     box = screen_bounds.daemons
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
 
+    daemons: List[Optional[constants.Daemon]] = [None for _ in range(sequences_size)]
+    daemon_names = ["UNKNOWN" for _ in range(sequences_size)]
+
     ## Search for each daemon
-    y_max = 0
-    x_min = y_min = 9999
-    all_daemon_points = dict()
     for daemon_enum, template in constants.CV_TEMPLATES.daemons.items():
         daemon_results = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
         _, confidence, _, location = cv2.minMaxLoc(daemon_results)
         if confidence >= config.daemon_detection_threshold:
-            all_daemon_points[daemon_enum] = location
-            if location[0] < x_min:
-                x_min = location[0]
-            if location[1] > y_max:
-                y_max = location[1]
-            if location[1] < y_min:
-                y_min = location[1]
+            daemon_index = round(
+                (location[1] - y_min) / constants.CV_SEQUENCES_Y_GAP_SIZE
+            )
+            daemons[daemon_index] = daemon_enum
+            daemon_names[daemon_index] = constants.CV_TEMPLATES.daemon_names.get(
+                daemon_enum, "UNKNOWN"
+            )
+            if all(daemons):
+                break
 
-    LOG.debug(f"Daemon parsing found min/max: ({x_min}, {y_min}) / ({y_max})")
+    LOG.debug(f"Daemon parsing found daemons: {daemons}")
+    LOG.debug(f"Daemon parsing found daemon names: {daemon_names}")
 
-    ## NOTE: There's a bug here. If the first daemon is unknown, y_min is incorrect
-    daemons_size = round((y_max - y_min) / constants.CV_SEQUENCES_Y_GAP_SIZE) + 1
-    daemon_enums: List[Optional[constants.Daemon]] = [
-        None for _ in range(sequences_size)
-    ]
-    names = ["UNKNOWN" for _ in range(sequences_size)]
-    for daemon_enum, point in all_daemon_points.items():
-        daemon_index = round((point[1] - y_min) / constants.CV_SEQUENCES_Y_GAP_SIZE)
-        daemon_enums[daemon_index] = daemon_enum
-        names[daemon_index] = constants.CV_TEMPLATES.daemon_names.get(
-            daemon_enum, "UNKNOWN"
-        )
-
-    LOG.debug(f"Daemon parsing found daemon names: {names}")
-    return tuple(daemon_enums), tuple(names)
+    return sequences, tuple(daemons), tuple(daemon_names)
 
 
 def force_calculate_sequence_path_data(

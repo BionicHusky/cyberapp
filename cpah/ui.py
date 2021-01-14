@@ -209,12 +209,9 @@ class AnalysisWorker(SolverWorker):
         buffer_boxes_image = logic.generate_buffer_boxes_image(buffer_size)
         self.buffer_image_signal.emit(buffer_boxes_image)  # type: ignore
 
-        self.status.emit("SEQUENCES")  # type: ignore
-        sequences = logic.parse_sequences_data(config, screenshot_data, screen_bounds)
-
         self.status.emit("DAEMONS")  # type: ignore
-        daemons, daemon_names = logic.parse_daemons_data(
-            config, screenshot_data, screen_bounds, len(sequences)
+        sequences, daemons, daemon_names = logic.parse_daemons_data(
+            config, screenshot_data, screen_bounds
         )
         sequence_selection_data = [
             models.SequenceSelectionData(

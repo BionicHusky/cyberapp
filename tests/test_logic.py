@@ -341,15 +341,11 @@ class ScreenshotTestCase:
         if self.buffer_size is not None:
             assert self.buffer_size == buffer_size
 
-        sequences = cpah.logic.parse_sequences_data(
+        sequences, daemons, daemon_names = cpah.logic.parse_daemons_data(
             self.config, screenshot_data, screen_bounds
         )
         if self.sequences is not None:
             assert self.sequences == sequences
-
-        daemons, daemon_names = cpah.logic.parse_daemons_data(
-            self.config, screenshot_data, screen_bounds, len(sequences)
-        )
         if self.daemon_names is not None:
             assert self.daemon_names == daemon_names
 
