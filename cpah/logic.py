@@ -368,7 +368,7 @@ def parse_screen_bounds(
     ## Estimates for the rest of the search bounds
     bottom_cutoff = code_matrix_y_top + int(constants.ANALYSIS_IMAGE_SIZE[1] * 0.5)
     code_matrix_y_bottom = sequences_y_bottom = daemons_y_bottom = bottom_cutoff
-    daemons_x_bottom = buffer_x_bottom = int(constants.ANALYSIS_IMAGE_SIZE[0] * 0.85)
+    daemons_x_bottom = buffer_x_bottom = int(constants.ANALYSIS_IMAGE_SIZE[0] * 0.9)
 
     return models.ScreenBounds(
         code_matrix=(
