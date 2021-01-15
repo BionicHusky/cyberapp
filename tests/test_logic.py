@@ -17,37 +17,64 @@ class MatrixTestCase:
     def __init__(
         self,
         test_id: str,
-        data: List[List[int]],
+        data: Tuple[Tuple[int, ...], ...],
         buffer_size: int,
-        sequences: List[List[int]],
+        sequences: Tuple[Tuple[int, ...], ...],
         expected_valid: bool,
         expected_solution_length: Optional[int] = None,
         expected_solution_path: Optional[Tuple[Tuple[int, int], ...]] = None,
+        expected_number_of_sequence_paths: Optional[int] = None,
         expected_solvable: bool = True,
+        expected_selected_indices: Optional[Tuple[int, ...]] = None,
         selected_sequence_indices: Optional[Tuple[int, ...]] = None,
+        daemon_priorities: Optional[List[cpah.constants.Daemon]] = None,
+        force_autohack: bool = False,
+        daemons: Optional[Tuple[cpah.constants.Daemon, ...]] = None,
     ):
         self.test_id = test_id
+        self.config = cpah.models.Config(
+            daemon_priorities=daemon_priorities or list(),
+            force_autohack=force_autohack,
+        )
+        daemons = daemons or tuple(cpah.constants.Daemon)
         self.breach_protocol_data = cpah.models.BreachProtocolData(
             data=data,
             matrix_size=len(data),
             buffer_size=buffer_size,
             sequences=sequences,
-            targets=[""] * len(sequences),
+            daemons=daemons[: len(sequences)],
+            daemon_names=("",) * len(sequences),
         )
         self.expected_valid = expected_valid
         self.expected_solution_length = expected_solution_length
         self.expected_solution_path = expected_solution_path
+        self.expected_number_of_sequence_paths = expected_number_of_sequence_paths
         self.expected_solvable = expected_solvable
+        self.expected_selected_indices = expected_selected_indices
+        if selected_sequence_indices is None:
+            selected_sequence_indices = tuple(range(len(sequences)))
         self.selected_sequence_indices = selected_sequence_indices
 
     def verify(self):
-        sequence_path_data = cpah.logic.calculate_sequence_path_data(
-            self.breach_protocol_data,
-            selected_sequence_indices=self.selected_sequence_indices,
-        )
+        if self.config.force_autohack:
+            (
+                sequence_path_data,
+                selected_sequence_indices,
+            ) = cpah.logic.force_calculate_sequence_path_data(
+                self.config, self.breach_protocol_data
+            )
+        else:
+            sequence_path_data = cpah.logic.calculate_sequence_path_data(
+                self.breach_protocol_data, self.selected_sequence_indices
+            )
         assert sequence_path_data.solution_valid == self.expected_valid
         if self.expected_solvable:
             assert sequence_path_data.shortest_solution is not None
+            if self.expected_number_of_sequence_paths is not None:
+                assert (
+                    len(sequence_path_data.all_sequence_paths)
+                    == self.expected_number_of_sequence_paths
+                )
             if self.expected_solution_length is not None:
                 assert (
                     len(sequence_path_data.shortest_solution)
@@ -59,6 +86,8 @@ class MatrixTestCase:
                     sequence_path_data.shortest_solution_path
                     == self.expected_solution_path
                 )
+            if self.expected_selected_indices is not None:
+                assert self.expected_selected_indices == selected_sequence_indices
         else:
             assert sequence_path_data.shortest_solution is None
             assert sequence_path_data.shortest_solution_path is None
@@ -67,138 +96,198 @@ class MatrixTestCase:
 matrix_test_data = [
     MatrixTestCase(
         test_id="Valid, 6 total nodes",
-        data=[
-            [0, 1, 0, 0, 0],
-            [4, 1, 0, 3, 3],
-            [3, 1, 3, 3, 4],
-            [4, 1, 1, 1, 1],
-            [4, 0, 1, 0, 0],
-        ],
+        data=(
+            (0, 1, 0, 0, 0),
+            (4, 1, 0, 3, 3),
+            (3, 1, 3, 3, 4),
+            (4, 1, 1, 1, 1),
+            (4, 0, 1, 0, 0),
+        ),
         buffer_size=6,
-        sequences=[[0, 1], [1, 3], [3, 4, 0]],
+        sequences=((0, 1), (1, 3), (3, 4, 0)),
         expected_valid=True,
         expected_solution_length=6,
     ),
     MatrixTestCase(
         test_id="Invalid, 6 total nodes",
-        data=[
-            [1, 0, 0, 1, 0],
-            [0, 0, 0, 1, 3],
-            [1, 3, 4, 1, 0],
-            [3, 3, 1, 0, 0],
-            [0, 0, 1, 1, 0],
-        ],
+        data=(
+            (1, 0, 0, 1, 0),
+            (0, 0, 0, 1, 3),
+            (1, 3, 4, 1, 0),
+            (3, 3, 1, 0, 0),
+            (0, 0, 1, 1, 0),
+        ),
         buffer_size=5,
-        sequences=[[0, 3], [1, 0, 0], [0, 0, 1]],
+        sequences=((0, 3), (1, 0, 0), (0, 0, 1)),
         expected_valid=False,
         expected_solution_length=6,
     ),
     MatrixTestCase(
         test_id="Valid, 1 exploration node",
-        data=[
-            [0, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 4, 3],
-            [0, 2, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-        ],
+        data=(
+            (0, 1, 0, 0, 0, 0),
+            (0, 0, 0, 0, 0, 0),
+            (0, 0, 0, 0, 0, 0),
+            (0, 0, 0, 0, 4, 3),
+            (0, 2, 0, 0, 0, 0),
+            (0, 0, 0, 0, 0, 0),
+        ),
         buffer_size=5,
-        sequences=[[1, 2], [3, 4]],
+        sequences=((1, 2), (3, 4)),
         expected_valid=True,
         expected_solution_length=5,
         expected_solution_path=((1, 0), (1, 4), (5, 4), (5, 3), (4, 3)),
     ),
     MatrixTestCase(
         test_id="Valid, 3 exploration nodes",
-        data=[
-            [0, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-            [0, 2, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-            [0, 3, 0, 0, 0, 4],
-            [0, 0, 0, 0, 0, 0],
-        ],
+        data=(
+            (0, 1, 0, 0, 0, 0),
+            (0, 0, 0, 0, 0, 0),
+            (0, 2, 0, 0, 0, 0),
+            (0, 0, 0, 0, 0, 0),
+            (0, 3, 0, 0, 0, 4),
+            (0, 0, 0, 0, 0, 0),
+        ),
         buffer_size=7,
-        sequences=[[1, 2], [3, 4]],
+        sequences=((1, 2), (3, 4)),
         expected_valid=True,
         expected_solution_length=7,
     ),
     MatrixTestCase(
         test_id="Invalid, 3 exploration nodes",
-        data=[
-            [0, 4, 4, 1, 0, 3],
-            [2, 0, 3, 0, 2, 3],
-            [2, 0, 2, 0, 3, 2],
-            [1, 2, 1, 0, 4, 1],
-            [0, 4, 1, 2, 0, 3],
-            [1, 1, 0, 0, 0, 1],
-        ],
+        data=(
+            (0, 4, 4, 1, 0, 3),
+            (2, 0, 3, 0, 2, 3),
+            (2, 0, 2, 0, 3, 2),
+            (1, 2, 1, 0, 4, 1),
+            (0, 4, 1, 2, 0, 3),
+            (1, 1, 0, 0, 0, 1),
+        ),
         buffer_size=6,
-        sequences=[[0, 3, 4], [2, 2, 0], [2, 3, 0]],
+        sequences=((0, 3, 4), (2, 2, 0), (2, 3, 0)),
         expected_valid=False,
         expected_solution_length=12,
     ),
     MatrixTestCase(
         test_id="Invalid, unsolvable",
-        data=[
-            [0, 0, 0, 0, 0, 1],
-            [0, 0, 0, 0, 3, 2],
-            [0, 0, 0, 4, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-        ],
+        data=(
+            (0, 0, 0, 0, 0, 1),
+            (0, 0, 0, 0, 3, 2),
+            (0, 0, 0, 4, 0, 0),
+            (0, 0, 0, 0, 0, 0),
+            (0, 0, 0, 0, 0, 0),
+            (0, 0, 0, 0, 0, 0),
+        ),
         buffer_size=20,
-        sequences=[[1, 2], [3, 4]],
+        sequences=((1, 2), (3, 4)),
         expected_valid=False,
         expected_solvable=False,
     ),
     MatrixTestCase(
         test_id="Valid, sequence combination and splits",
-        data=[
-            [1, 0, 0, 0, 0, 0],
-            [2, 2, 0, 0, 0, 0],
-            [0, 0, 2, 0, 0, 0],
-            [0, 0, 3, 4, 0, 0],
-            [0, 0, 0, 1, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-        ],
+        data=(
+            (1, 0, 0, 0, 0, 0),
+            (2, 2, 0, 0, 0, 0),
+            (0, 0, 2, 0, 0, 0),
+            (0, 0, 3, 4, 0, 0),
+            (0, 0, 0, 1, 0, 0),
+            (0, 0, 0, 0, 0, 0),
+        ),
         buffer_size=8,
-        sequences=[[1, 2, 2], [2, 3], [3, 4, 1]],
+        sequences=((1, 2, 2), (2, 3), (3, 4, 1)),
         expected_valid=True,
         expected_solution_length=8,
     ),
     MatrixTestCase(
         test_id="Valid, selected indices",
-        data=[
-            [3, 1, 0, 3, 2, 1],
-            [1, 2, 0, 1, 3, 4],
-            [4, 2, 1, 3, 0, 2],
-            [1, 4, 3, 1, 2, 4],
-            [0, 0, 1, 3, 3, 3],
-            [0, 0, 0, 1, 4, 2],
-        ],
+        data=(
+            (3, 1, 0, 3, 2, 1),
+            (1, 2, 0, 1, 3, 4),
+            (4, 2, 1, 3, 0, 2),
+            (1, 4, 3, 1, 2, 4),
+            (0, 0, 1, 3, 3, 3),
+            (0, 0, 0, 1, 4, 2),
+        ),
         buffer_size=6,
-        sequences=[[1, 4, 2], [0, 2, 4], [2, 4, 3, 1]],
+        sequences=((1, 4, 2), (0, 2, 4), (2, 4, 3, 1)),
         expected_valid=True,
         expected_solution_length=6,
         selected_sequence_indices=(0, 2),
     ),
     MatrixTestCase(
         test_id="Invalid, unsolvable from too many solutions",
-        data=[
-            [3, 3, 4, 1, 1, 0],
-            [0, 4, 1, 0, 4, 0],
-            [4, 1, 3, 1, 2, 1],
-            [2, 4, 0, 0, 3, 1],
-            [3, 2, 2, 2, 1, 3],
-            [2, 2, 4, 3, 3, 2],
-        ],
+        data=(
+            (3, 3, 4, 1, 1, 0),
+            (0, 4, 1, 0, 4, 0),
+            (4, 1, 3, 1, 2, 1),
+            (2, 4, 0, 0, 3, 1),
+            (3, 2, 2, 2, 1, 3),
+            (2, 2, 4, 3, 3, 2),
+        ),
         buffer_size=6,
-        sequences=[[1, 0, 0], [2, 1, 1, 1], [1, 2, 3], [1, 2, 2], [1, 3]],
+        sequences=((1, 0, 0), (2, 1, 1, 1), (1, 2, 3), (1, 2, 2), (1, 3)),
         expected_valid=False,
         expected_solvable=False,
+    ),
+    MatrixTestCase(
+        test_id="Valid, sequence path permutation consolidation",
+        data=(
+            (1, 0, 2, 0, 3, 2),
+            (2, 0, 1, 0, 0, 1),
+            (0, 0, 3, 4, 2, 0),
+            (0, 1, 2, 0, 1, 0),
+            (0, 0, 0, 4, 2, 2),
+            (1, 0, 3, 2, 1, 0),
+        ),
+        buffer_size=6,
+        sequences=((0, 0), (2, 0, 0), (0, 4, 2, 1)),
+        expected_valid=True,
+        expected_solvable=True,
+        expected_number_of_sequence_paths=3,
+    ),
+    MatrixTestCase(
+        test_id="Force autohack, all datamine",
+        data=(
+            (0, 0, 1, 4, 1),
+            (1, 3, 4, 0, 3),
+            (0, 3, 1, 4, 4),
+            (0, 3, 3, 0, 1),
+            (1, 1, 0, 1, 1),
+        ),
+        buffer_size=4,
+        sequences=((1, 3), (3, 1), (1, 0, 1)),
+        expected_valid=True,
+        expected_solvable=True,
+        expected_selected_indices=(0, 2),
+        force_autohack=True,
+    ),
+    MatrixTestCase(
+        test_id="Force autohack, custom daemon priorities",
+        data=(
+            (3, 3, 4, 1, 1, 0),
+            (0, 4, 1, 0, 4, 0),
+            (4, 1, 3, 1, 2, 1),
+            (2, 4, 0, 0, 3, 1),
+            (3, 2, 2, 2, 1, 3),
+            (2, 2, 4, 3, 3, 2),
+        ),
+        buffer_size=6,
+        sequences=((1, 0, 0), (2, 1, 1, 1), (1, 2, 3), (1, 2, 2), (1, 3)),
+        expected_valid=True,
+        expected_solvable=True,
+        expected_selected_indices=(1, 3),
+        force_autohack=True,
+        daemon_priorities=[
+            cpah.constants.Daemon.FRIENDLY_TURRETS,
+            cpah.constants.Daemon.TURRET_SHUTDOWN,
+        ],
+        daemons=(
+            cpah.constants.Daemon.ICEPICK,
+            cpah.constants.Daemon.FRIENDLY_TURRETS,
+            cpah.constants.Daemon.MASS_VULNERABILITY,
+            cpah.constants.Daemon.TURRET_SHUTDOWN,
+            cpah.constants.Daemon.CAMERA_SHUTDOWN,
+        ),
     ),
 ]
 
@@ -219,10 +308,10 @@ class ScreenshotTestCase:
         self,
         test_id: str,
         screenshot_name: str,
-        matrix_data: Optional[List[List[int]]] = None,
+        matrix_data: Optional[Tuple[Tuple[int, ...], ...]] = None,
         buffer_size: Optional[int] = None,
-        sequences: Optional[List[List[int]]] = None,
-        targets: Optional[List[str]] = None,
+        sequences: Optional[Tuple[Tuple[int, ...], ...]] = None,
+        daemon_names: Optional[Tuple[str, ...]] = None,
         raises: Optional[Type[Exception]] = None,
         **config_kwargs,
     ):
@@ -231,11 +320,12 @@ class ScreenshotTestCase:
         self.matrix_data = matrix_data
         self.buffer_size = buffer_size
         self.sequences = sequences
-        self.targets = targets
+        self.daemon_names = daemon_names
         self.raises = raises
         self.config = cpah.models.Config(**config_kwargs)
 
     def _verify(self):
+        cpah.constants.CV_TEMPLATES.load_language(self.config.detection_language)
         screenshot_data = cpah.logic.grab_screenshot(
             self.config, SCREENSHOTS_DIRECTORY / self.screenshot_name
         )
@@ -251,17 +341,13 @@ class ScreenshotTestCase:
         if self.buffer_size is not None:
             assert self.buffer_size == buffer_size
 
-        sequences = cpah.logic.parse_sequences_data(
+        sequences, daemons, daemon_names = cpah.logic.parse_daemons_data(
             self.config, screenshot_data, screen_bounds
         )
         if self.sequences is not None:
             assert self.sequences == sequences
-
-        targets = cpah.logic.parse_targets_data(
-            self.config, screenshot_data, screen_bounds, len(sequences)
-        )
-        if self.targets is not None:
-            assert self.targets == targets
+        if self.daemon_names is not None:
+            assert self.daemon_names == daemon_names
 
     def verify(self):
         """
@@ -279,32 +365,32 @@ screenshot_test_data = [
     ScreenshotTestCase(
         test_id="Standard size, basic",
         screenshot_name="0.png",
-        matrix_data=[
-            [0, 1, 0, 4, 0],
-            [1, 1, 0, 0, 0],
-            [1, 3, 0, 0, 4],
-            [0, 0, 3, 0, 3],
-            [0, 3, 4, 4, 3],
-        ],
+        matrix_data=(
+            (0, 1, 0, 4, 0),
+            (1, 1, 0, 0, 0),
+            (1, 3, 0, 0, 4),
+            (0, 0, 3, 0, 3),
+            (0, 3, 4, 4, 3),
+        ),
         buffer_size=6,
-        sequences=[[0, 4], [0, 0], [0, 0, 4]],
-        targets=["DATAMINE_V1", "DATAMINE_V2", "DATAMINE_V3"],
+        sequences=((0, 4), (0, 0), (0, 0, 4)),
+        daemon_names=("DATAMINE_V1", "DATAMINE_V2", "DATAMINE_V3"),
     ),
     ScreenshotTestCase(
         test_id="Standard size, prehacked",
         screenshot_name="1.png",
-        matrix_data=[
-            [3, 2, 5, 1, 1, 1, 3],
-            [5, 5, 0, 0, 5, 1, 3],
-            [5, 5, 1, 0, 1, 0, 1],
-            [0, 3, 4, 3, 1, 0, 3],
-            [1, 2, 0, 5, 2, 4, 1],
-            [0, 4, 1, 3, 3, 5, 2],
-            [0, 0, 2, 5, 1, 3, 5],
-        ],
+        matrix_data=(
+            (3, 2, 5, 1, 1, 1, 3),
+            (5, 5, 0, 0, 5, 1, 3),
+            (5, 5, 1, 0, 1, 0, 1),
+            (0, 3, 4, 3, 1, 0, 3),
+            (1, 2, 0, 5, 2, 4, 1),
+            (0, 4, 1, 3, 3, 5, 2),
+            (0, 0, 2, 5, 1, 3, 5),
+        ),
         buffer_size=8,
-        sequences=[[5, 5], [0, 0, 5]],
-        targets=["CAMERA SHUTDOWN", "MASS VULNERABILITY"],
+        sequences=((5, 5), (0, 0, 5)),
+        daemon_names=("CAMERA SHUTDOWN", "MASS VULNERABILITY"),
     ),
     ScreenshotTestCase(
         test_id="Standard size, invalid cursor position",
@@ -319,17 +405,17 @@ screenshot_test_data = [
     ScreenshotTestCase(
         test_id="Small size, default thresholds, buffer size override",
         screenshot_name="3.png",
-        matrix_data=[
-            [1, 0, 3, 3, 3, 4],
-            [0, 1, 0, 2, 1, 1],
-            [0, 3, 1, 0, 2, 3],
-            [1, 0, 0, 0, 0, 2],
-            [0, 0, 2, 3, 4, 0],
-            [1, 0, 2, 0, 2, 0],
-        ],
+        matrix_data=(
+            (1, 0, 3, 3, 3, 4),
+            (0, 1, 0, 2, 1, 1),
+            (0, 3, 1, 0, 2, 3),
+            (1, 0, 0, 0, 0, 2),
+            (0, 0, 2, 3, 4, 0),
+            (1, 0, 2, 0, 2, 0),
+        ),
         buffer_size=6,
-        sequences=[[1, 0, 2], [0, 0, 0], [0, 3, 2]],
-        targets=["DATAMINE_V1", "DATAMINE_V2", "DATAMINE_V3"],
+        sequences=((1, 0, 2), (0, 0, 0), (0, 3, 2)),
+        daemon_names=("DATAMINE_V1", "DATAMINE_V2", "DATAMINE_V3"),
         buffer_size_override=6,
     ),
     ScreenshotTestCase(
@@ -354,38 +440,38 @@ screenshot_test_data = [
         test_id="Medium size, valid buffer threshold",
         screenshot_name="4.png",
         buffer_box_detection_threshold=0.6,
-        matrix_data=[
-            [0, 0, 3, 0, 2, 1],
-            [1, 1, 1, 0, 0, 4],
-            [0, 2, 0, 0, 0, 2],
-            [2, 1, 1, 1, 0, 0],
-            [2, 0, 1, 4, 2, 2],
-            [3, 0, 0, 0, 3, 3],
-        ],
+        matrix_data=(
+            (0, 0, 3, 0, 2, 1),
+            (1, 1, 1, 0, 0, 4),
+            (0, 2, 0, 0, 0, 2),
+            (2, 1, 1, 1, 0, 0),
+            (2, 0, 1, 4, 2, 2),
+            (3, 0, 0, 0, 3, 3),
+        ),
         buffer_size=6,
-        sequences=[[1, 0, 2, 1]],
-        targets=["ICEPICK"],
+        sequences=((1, 0, 2, 1),),
+        daemon_names=("ICEPICK",),
     ),
     ScreenshotTestCase(
-        test_id="Standard size, several targets",
+        test_id="Standard size, several daemons",
         screenshot_name="5.png",
-        matrix_data=[
-            [3, 3, 4, 1, 1, 0],
-            [0, 4, 1, 0, 4, 0],
-            [4, 1, 3, 1, 2, 1],
-            [2, 4, 0, 0, 3, 1],
-            [3, 2, 2, 2, 1, 3],
-            [2, 2, 4, 3, 3, 2],
-        ],
+        matrix_data=(
+            (3, 3, 4, 1, 1, 0),
+            (0, 4, 1, 0, 4, 0),
+            (4, 1, 3, 1, 2, 1),
+            (2, 4, 0, 0, 3, 1),
+            (3, 2, 2, 2, 1, 3),
+            (2, 2, 4, 3, 3, 2),
+        ),
         buffer_size=6,
-        sequences=[[1, 0, 0], [2, 1, 1, 1], [1, 2, 3], [1, 2, 2], [1, 3]],
-        targets=[
+        sequences=((1, 0, 0), (2, 1, 1, 1), (1, 2, 3), (1, 2, 2), (1, 3)),
+        daemon_names=(
             "ICEPICK",
             "FRIENDLY TURRETS",
             "MASS VULNERABILITY",
             "TURRET SHUTDOWN",
             "CAMERA SHUTDOWN",
-        ],
+        ),
     ),
     ScreenshotTestCase(
         test_id="Invalid screenshot",
@@ -395,16 +481,52 @@ screenshot_test_data = [
     ScreenshotTestCase(
         test_id="Ultrawide size",
         screenshot_name="7.png",
-        matrix_data=[
-            [0, 0, 1, 4, 1],
-            [1, 3, 4, 0, 3],
-            [0, 3, 1, 4, 4],
-            [0, 3, 3, 0, 1],
-            [1, 1, 0, 1, 1],
-        ],
+        matrix_data=(
+            (0, 0, 1, 4, 1),
+            (1, 3, 4, 0, 3),
+            (0, 3, 1, 4, 4),
+            (0, 3, 3, 0, 1),
+            (1, 1, 0, 1, 1),
+        ),
         buffer_size=8,
-        sequences=[[1, 3], [3, 1], [1, 0, 1]],
-        targets=["DATAMINE_V1", "DATAMINE_V2", "DATAMINE_V3"],
+        sequences=((1, 3), (3, 1), (1, 0, 1)),
+        daemon_names=("DATAMINE_V1", "DATAMINE_V2", "DATAMINE_V3"),
+    ),
+    ScreenshotTestCase(
+        test_id="Standard size, Simplified Chinese",
+        screenshot_name="8.png",
+        matrix_data=(
+            (0, 1, 3, 0, 0, 1),
+            (1, 0, 1, 1, 3, 3),
+            (1, 0, 3, 1, 0, 1),
+            (0, 1, 1, 3, 2, 3),
+            (2, 4, 2, 4, 0, 3),
+            (0, 3, 0, 4, 4, 0),
+        ),
+        buffer_size=6,
+        sequences=((0, 1, 2), (1, 0, 1), (2, 4, 4)),
+        daemon_names=(
+            "\u6570\u636e\u6316\u6398_V1",
+            "\u6570\u636e\u6316\u6398_V2",
+            "\u6570\u636e\u6316\u6398_V3",
+        ),
+        detection_language="\u7b80\u4f53\u4e2d\u6587",
+    ),
+    ScreenshotTestCase(
+        test_id="Standard size, 9 buffer size, prehacked",
+        screenshot_name="9.png",
+        matrix_data=(
+            (3, 2, 2, 2, 4, 3, 4),
+            (0, 4, 1, 5, 1, 0, 3),
+            (1, 2, 1, 4, 4, 3, 3),
+            (1, 4, 5, 0, 4, 1, 3),
+            (1, 0, 3, 1, 1, 1, 1),
+            (5, 4, 2, 5, 2, 0, 3),
+            (4, 0, 1, 5, 0, 5, 2),
+        ),
+        buffer_size=9,
+        sequences=((2, 3),),
+        daemon_names=("MASS VULNERABILITY",),
     ),
 ]
 

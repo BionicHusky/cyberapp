@@ -7,12 +7,17 @@ from PySide2.QtWidgets import QApplication
 QAPPLICATION_INSTANCE = QApplication([])
 
 
+import enum
+import json
 import os
 import pathlib
 import sys
 
+from typing import Any, Dict, Optional, Tuple
+
 import cv2  # type: ignore
 import pyautogui  # type: ignore
+import numpy  # type: ignore
 
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
 
@@ -33,12 +38,13 @@ _version_file = MODULE_DIRECTORY / "VERSION"
 
 ## General application constants
 APPLICATION_NAME = "cp2077_autohack"
-CONFIG_SCHEMA_VERSION = 1
+CONFIG_SCHEMA_VERSION = 2
 VERSION = (
     _version_file.read_text().strip() if _version_file.is_file() else "development"
 )
-MAX_SOLUTION_PATH_LENGTH = 16
-MAX_POTENTIAL_SOLUTION_THRESHOLD = 20
+MAX_SOLUTION_PATH_LENGTH = 12
+MAX_SIZE_ESTIMATE_THRESHOLD = 3500
+MEMOIZE_SIZE = 100
 
 ## Title used to find the process to screenshot
 GAME_EXECUTABLE_TITLE = "Cyberpunk 2077 (C) 2020 by CD Projekt RED"
@@ -76,32 +82,142 @@ BEEP_DURATION = 100
 ## Breach protocol data constants
 CODE_NAMES = ("1C", "55", "7A", "BD", "E9", "FF")
 
-## Preloaded opencv templates
-CV_BREACH_TITLE_TEMPLATE = _rt(IMAGES_DIRECTORY / "breach_title.png")
-CV_BUFFER_TITLE_TEMPLATE = _rt(IMAGES_DIRECTORY / "buffer_title.png")
-CV_SEQUENCES_TITLE_TEMPLATE = _rt(IMAGES_DIRECTORY / "sequences_title.png")
-CV_BUFFER_BOX_TEMPLATE = _rt(IMAGES_DIRECTORY / "buffer_box.png")
-CV_CODE_TEMPLATES = tuple(
-    _rt(IMAGES_DIRECTORY / f"code_{it}.png") for it in range(len(CODE_NAMES))
-)
-CV_CODE_SMALL_TEMPLATES = tuple(
-    _rt(IMAGES_DIRECTORY / f"code_{it}_small.png") for it in range(len(CODE_NAMES))
-)
-CV_TARGET_TEMPLATES = dict()
-_cv_target_templates_raw = {
-    "ICEPICK": IMAGES_DIRECTORY / "target_icepick_text.png",
-    "DATAMINE_V1": IMAGES_DIRECTORY / "target_datamine_1_text.png",
-    "DATAMINE_V2": IMAGES_DIRECTORY / "target_datamine_2_text.png",
-    "DATAMINE_V3": IMAGES_DIRECTORY / "target_datamine_3_text.png",
-    "MASS VULNERABILITY": IMAGES_DIRECTORY / "target_mass_vulnerability_text.png",
-    "CAMERA SHUTDOWN": IMAGES_DIRECTORY / "target_camera_shutdown_text.png",
-    "DATAMINE: COPY MALWARE": IMAGES_DIRECTORY / "target_copy_malware_text.png",
-    "NEUTRALIZE MALWARE": IMAGES_DIRECTORY / "target_neutralize_malware_text.png",
-    "FRIENDLY TURRETS": IMAGES_DIRECTORY / "target_friendly_turrets_text.png",
-    "TURRET SHUTDOWN": IMAGES_DIRECTORY / "target_turret_shutdown_text.png",
+
+class Daemon(str, enum.Enum):
+    DATAMINE_V1 = "datamine_v1"
+    DATAMINE_V2 = "datamine_v2"
+    DATAMINE_V3 = "datamine_v3"
+    ICEPICK = "icepick"
+    MASS_VULNERABILITY = "mass_vulnerability"
+    CAMERA_SHUTDOWN = "camera_shutdown"
+    FRIENDLY_TURRETS = "friendly_turrets"
+    TURRET_SHUTDOWN = "turret_shutdown"
+    OPTICS_JAMMER = "optics_jammer"
+    WEAPONS_JAMMER = "weapons_jammer"
+    DATAMINE_COPY_MALWARE = "datamine_copy_malware"
+    NEUTRALIZE_MALWARE = "neutralize_malware"
+    GAIN_ACCESS = "gain_access"
+
+
+DATAMINE_DAEMONS = {
+    Daemon.DATAMINE_V1,
+    Daemon.DATAMINE_V2,
+    Daemon.DATAMINE_V3,
 }
-for _target_name, _target_path in _cv_target_templates_raw.items():
-    CV_TARGET_TEMPLATES[_target_name] = _rt(_target_path)
+
+
+COMMON_DAEMONS = DATAMINE_DAEMONS.union(
+    {
+        Daemon.ICEPICK,
+        Daemon.MASS_VULNERABILITY,
+        Daemon.CAMERA_SHUTDOWN,
+        Daemon.FRIENDLY_TURRETS,
+        Daemon.TURRET_SHUTDOWN,
+        Daemon.OPTICS_JAMMER,
+        Daemon.WEAPONS_JAMMER,
+    }
+)
+
+
+class Title(str, enum.Enum):
+    BREACH = "breach"
+    BUFFER = "buffer"
+    SEQUENCES = "sequences"
+
+
+## Discover available template image languages
+TEMPLATE_LANGUAGE_DATA: Dict[str, Dict] = dict()
+for _language_directory in (IMAGES_DIRECTORY / "languages").iterdir():
+    with (_language_directory / "meta.json").open("rb") as _meta_file:
+        _metadata = json.load(_meta_file)
+    _metadata["directory"] = _language_directory
+    TEMPLATE_LANGUAGE_DATA[_metadata["name"]] = _metadata
+
+
+class Templates:
+    def __init__(self):
+        self._language: Optional[str] = None
+
+        ## Language agnostic: buffer boxes
+        self.buffer_box = _rt(IMAGES_DIRECTORY / "buffer_box.png")
+
+        ## Sometimes language agnostic: codes
+        self._codes: Tuple[numpy.ndarray, ...] = tuple()
+        self.default_codes: Tuple[numpy.ndarray, ...] = tuple(
+            _rt(IMAGES_DIRECTORY / f"code_{it}.png") for it in range(len(CODE_NAMES))
+        )
+        self._small_codes: Tuple[numpy.ndarray, ...] = tuple()
+        self.default_small_codes: Tuple[numpy.ndarray, ...] = tuple(
+            _rt(IMAGES_DIRECTORY / f"code_{it}_small.png")
+            for it in range(len(CODE_NAMES))
+        )
+
+        ## Language dependent: titles and daemons
+        self._daemon_names: Dict[Daemon, str] = dict()
+        self._daemons: Dict[Daemon, numpy.ndarray] = dict()
+        self._titles: Dict[Title, numpy.ndarray] = dict()
+
+    def requires_language(method):
+        def _decorated(self, *args, **kwargs):
+            if not self._language:
+                raise ValueError(
+                    f"Templates.{method.__name__} requires a loaded language"
+                )
+            return method(self, *args, **kwargs)
+
+        return _decorated
+
+    def load_language(self, language: str):
+        data = TEMPLATE_LANGUAGE_DATA[language]
+        directory = data["directory"]
+
+        if (directory / "code_0.png").exists():
+            code_range = range(len(CODE_NAMES))
+            self._codes = tuple(_rt(directory / f"code_{it}.png") for it in code_range)
+            self._small_codes = tuple(
+                _rt(directory / f"code_{it}_small.png") for it in code_range
+            )
+        else:
+            self._codes = self.default_codes
+            self._small_codes = self.default_small_codes
+
+        self._daemon_names = {Daemon(k): v for k, v in data["daemons"].items()}
+        self._daemons = dict()
+        for daemon in Daemon:
+            daemon_image_file = directory / f"daemon_{daemon.value}.png"
+            if daemon_image_file.exists():
+                self._daemons[daemon] = _rt(daemon_image_file)
+
+        self._titles = {it: _rt(directory / f"title_{it.value}.png") for it in Title}
+        self._language = language
+
+    @property  # type: ignore
+    @requires_language
+    def codes(self):
+        return self._codes
+
+    @property  # type: ignore
+    @requires_language
+    def small_codes(self):
+        return self._small_codes
+
+    @property  # type: ignore
+    @requires_language
+    def daemon_names(self):
+        return self._daemon_names
+
+    @property  # type: ignore
+    @requires_language
+    def daemons(self):
+        return self._daemons
+
+    @property  # type: ignore
+    @requires_language
+    def titles(self):
+        return self._titles
+
+
+CV_TEMPLATES = Templates()
 
 ## Opencv data parsing constants
 ANALYSIS_IMAGE_SIZE = (1920, 1080)
@@ -109,10 +225,10 @@ CV_MATRIX_GAP_SIZE = 64.5
 CV_BUFFER_BOX_GAP_SIZE = 42.0
 CV_SEQUENCES_X_GAP_SIZE = 42.0
 CV_SEQUENCES_Y_GAP_SIZE = 70.5
-CV_TARGETS_GAP_SIZE = CV_SEQUENCES_Y_GAP_SIZE
+CV_DAEMONS_GAP_SIZE = CV_SEQUENCES_Y_GAP_SIZE
+BASE_SEQUENCE_TEMPLATE_WIDTH = 330
 
 ## Game window interaction constants
-WINDOW_FOCUS_DELAY = 0.4
 MOUSE_MOVE_DELAY = 0.01
 MOUSE_CLICK_DELAY = 0.01
 
@@ -150,7 +266,7 @@ SEQUENCE_PATH_MAX_SIZE = 8
 
 ## Buffer box constants
 BUFFER_MIN_X_THRESHOLD = 35
-BUFFER_COUNT_THRESHOLD = 8
+BUFFER_COUNT_THRESHOLD = 10
 BUFFER_IMAGE_FONT_SIZE = 22
 BUFFER_IMAGE_FONT = ImageFont.truetype(str(SEMIBOLD_FONT_PATH), BUFFER_IMAGE_FONT_SIZE)
 BUFFER_IMAGE_SPACING = 8
@@ -158,7 +274,7 @@ BUFFER_BOX_IMAGE_COLOR = (118, 135, 50)
 BUFFER_BOX_IMAGE_SIZE = 36
 BUFFER_BOX_IMAGE_THICKNESS = 2
 BUFFER_COMPOSITE_DISTANCE = BUFFER_BOX_IMAGE_SIZE + BUFFER_IMAGE_SPACING
-BUFFER_IMAGE_DIMENSIONS = (345, BUFFER_BOX_IMAGE_SIZE)
+MAXIMUM_BUFFER_IMAGE_LENGTH = 344
 
 ## Generated buffer boxes and buffer box code images
 BUFFER_BOX_IMAGE = Image.new("RGBA", (BUFFER_BOX_IMAGE_SIZE,) * 2, color=(0,) * 4)

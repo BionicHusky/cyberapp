@@ -22,6 +22,7 @@ logging.config.dictConfig(
                 "formatter": "default",
                 "class": "logging.handlers.RotatingFileHandler",
                 "filename": str(constants.LOG_FILE_PATH),
+                "encoding": "utf-8",
                 "maxBytes": 500_000,
                 "backupCount": 1,
             },

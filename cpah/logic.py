@@ -1,11 +1,10 @@
-import copy
+import functools
 import itertools
 import json
 import pathlib
-import sys
 import time
 
-from typing import Iterable, List, Optional, Set, Tuple
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 import cv2  # type: ignore
 import numpy  # type: ignore
@@ -22,6 +21,29 @@ from .mouse_helper import MOUSE
 from .logger import LOG
 
 
+def _migrate_config(data: Dict) -> Dict:
+    """Modifies the config data to be compatible with the current config version"""
+    config_version = data["schema_version"]
+
+    if config_version == 1:
+        LOG.debug("Converting config format from version 1 to version 2")
+        data["daemon_detection_threshold"] = data.pop("target_detection_threshold")
+        data["game_focus_delay"] = 400
+        data["detection_language"] = "English"
+        data["force_autohack"] = False
+        data["daemon_priorities"] = list()
+        data["autohack_activation_key"] = "f"
+        config_version = data["schema_version"] = 2
+
+    ## NOTE Add more conditionals when more schema versions are added
+    ## Remember constants.CONFIG_SCHEMA_VERSION needs to be modified
+
+    assert (
+        config_version == constants.CONFIG_SCHEMA_VERSION
+    ), f"Invalid config version ({config_version}). CPAH may be outdated!"
+    return data
+
+
 def load_config() -> models.Config:
     LOG.debug(f"Loading config file from {constants.CONFIG_FILE_PATH}")
     if not constants.CONFIG_FILE_PATH.is_file():
@@ -30,11 +52,7 @@ def load_config() -> models.Config:
     with constants.CONFIG_FILE_PATH.open("r") as config_file:
         try:
             config_data = json.load(config_file)
-            ## NOTE: Change if config scheme is updated
-            config_version = config_data["schema_version"]
-            assert (
-                config_version == constants.CONFIG_SCHEMA_VERSION
-            ), f"Unknown config version {config_version}"
+            config_data = _migrate_config(config_data)
             config = models.Config(**config_data)
         except Exception as exception:
             LOG.exception(
@@ -57,9 +75,11 @@ def convert_code(code: Iterable[int]) -> Tuple[str, ...]:
     return tuple(constants.CODE_NAMES[it] for it in code)
 
 
-def generate_matrix_image(image_size: int, matrix_data: List[List[int]]) -> Image.Image:
+def generate_matrix_image(
+    image_size: int, matrix_data: Tuple[Tuple[int, ...], ...]
+) -> Image.Image:
     """Generates a matrix image of codes to be displayed in the GUI."""
-    matrix_image = Image.new("RGBA", (image_size,) * 2, color=(0, 0, 0, 0))
+    matrix_image = Image.new("RGBA", (image_size,) * 2, color=(0,) * 4)
     for column_index, column_data in enumerate(matrix_data):
         for row_index, code in enumerate(column_data):
             matrix_image.alpha_composite(
@@ -77,7 +97,7 @@ def generate_matrix_image(image_size: int, matrix_data: List[List[int]]) -> Imag
 def generate_sequence_path_image(
     image_size: int, sequence_path: Tuple[Tuple[int, int], ...], valid_path: bool
 ) -> Image.Image:
-    sequence_path_image = Image.new("RGBA", (image_size,) * 2, color=(0, 0, 0, 0))
+    sequence_path_image = Image.new("RGBA", (image_size,) * 2, color=(0,) * 4)
     offset = int(constants.MATRIX_IMAGE_SIZE / 2) - 1  ## lol
     box_offset = int(constants.SEQUENCE_PATH_IMAGE_BOX_SIZE / 2)
     draw = ImageDraw.Draw(sequence_path_image)
@@ -144,11 +164,36 @@ def generate_sequence_path_image(
     return sequence_path_image
 
 
+def _buffer_base_generator(buffer_size: int) -> Image.Image:
+    """Helper for creating buffer box base images."""
+    full_image_width = max(
+        constants.MAXIMUM_BUFFER_IMAGE_LENGTH,
+        buffer_size * constants.BUFFER_BOX_IMAGE_SIZE
+        + (buffer_size - 1) * constants.BUFFER_IMAGE_SPACING,
+    )
+    return Image.new(
+        "RGBA",
+        (full_image_width, constants.BUFFER_BOX_IMAGE_SIZE),
+        color=(0,) * 4,
+    )
+
+
+def _buffer_base_resizer(buffer_image: Image.Image) -> Image.Image:
+    """Helper for resizing buffer box base images to the maximum length."""
+    if buffer_image.size[0] > constants.MAXIMUM_BUFFER_IMAGE_LENGTH:
+        ratio = constants.MAXIMUM_BUFFER_IMAGE_LENGTH / buffer_image.size[0]
+        buffer_image = buffer_image.resize(
+            (
+                constants.MAXIMUM_BUFFER_IMAGE_LENGTH,
+                round(ratio * constants.BUFFER_BOX_IMAGE_SIZE),
+            )
+        )
+    return buffer_image
+
+
 def generate_buffer_boxes_image(buffer_size: int) -> Image.Image:
     """Creates the buffer boxes base image."""
-    buffer_boxes_image = Image.new(
-        "RGBA", constants.BUFFER_IMAGE_DIMENSIONS, color=(0, 0, 0, 0)
-    )
+    buffer_boxes_image = _buffer_base_generator(buffer_size)
 
     for box_index in range(buffer_size):
         buffer_boxes_image.alpha_composite(
@@ -156,14 +201,14 @@ def generate_buffer_boxes_image(buffer_size: int) -> Image.Image:
             dest=(constants.BUFFER_COMPOSITE_DISTANCE * box_index, 0),
         )
 
-    return buffer_boxes_image
+    return _buffer_base_resizer(buffer_boxes_image)
 
 
-def generate_buffer_sequence_image(sequence: Tuple[int, ...]) -> Image.Image:
+def generate_buffer_sequence_image(
+    buffer_size: int, sequence: Tuple[int, ...]
+) -> Image.Image:
     """Creates the sequence of codes for the buffer."""
-    buffer_sequence_image = Image.new(
-        "RGBA", constants.BUFFER_IMAGE_DIMENSIONS, color=(0, 0, 0, 0)
-    )
+    buffer_sequence_image = _buffer_base_generator(buffer_size)
 
     draw = ImageDraw.Draw(buffer_sequence_image)
     for index, code in enumerate(sequence):
@@ -179,10 +224,10 @@ def generate_buffer_sequence_image(sequence: Tuple[int, ...]) -> Image.Image:
             constants.BUFFER_CODE_IMAGES[code], dest=(x_offset, 0)
         )
 
-    return buffer_sequence_image
+    return _buffer_base_resizer(buffer_sequence_image)
 
 
-def _focus_game_window() -> int:
+def _focus_game_window(config: models.Config) -> int:
     """Helper function to focus the game window."""
     LOG.debug("Bringing CP2077 to the foreground")
     hwnd = win32gui.FindWindow(None, constants.GAME_EXECUTABLE_TITLE)
@@ -192,7 +237,7 @@ def _focus_game_window() -> int:
     if not hwnd:
         raise exceptions.CPAHGameNotFoundException()
     win32gui.SetForegroundWindow(hwnd)
-    time.sleep(constants.WINDOW_FOCUS_DELAY)
+    time.sleep(config.game_focus_delay / 1000)
     return hwnd
 
 
@@ -206,7 +251,7 @@ def grab_screenshot(
         screenshot = Image.open(from_file)
     else:
         LOG.debug(f"Taking a screenshot from the game")
-        hwnd = _focus_game_window()
+        hwnd = _focus_game_window(config)
         x_start, y_start, x_end, y_end = win32gui.GetWindowRect(hwnd)
         LOG.debug(f"WindowRect: ({x_start}, {y_start}), ({x_end}, {y_end})")
 
@@ -267,7 +312,7 @@ def parse_screen_bounds(
     ## Search for the breach title ("BREACH TIME REMAINING")
     breach_title_results = cv2.matchTemplate(
         screenshot_data.screenshot,
-        constants.CV_BREACH_TITLE_TEMPLATE,
+        constants.CV_TEMPLATES.titles[constants.Title.BREACH],
         cv2.TM_CCOEFF_NORMED,
     )
     _, confidence, _, location = cv2.minMaxLoc(breach_title_results)
@@ -281,9 +326,10 @@ def parse_screen_bounds(
     code_matrix_x_top = location[0]
 
     ## Search for the buffer title ("BUFFER")
+    buffer_template = constants.CV_TEMPLATES.titles[constants.Title.BUFFER]
     buffer_title_results = cv2.matchTemplate(
         screenshot_data.screenshot,
-        constants.CV_BUFFER_TITLE_TEMPLATE,
+        buffer_template,
         cv2.TM_CCOEFF_NORMED,
     )
     _, confidence, _, location = cv2.minMaxLoc(buffer_title_results)
@@ -294,14 +340,15 @@ def parse_screen_bounds(
         )
 
     ## Assign coordinate elements
-    height = constants.CV_BUFFER_TITLE_TEMPLATE.shape[1::-1][1]
+    height = buffer_template.shape[0]
     code_matrix_x_bottom = sequences_x_top = buffer_x_top = location[0]
     buffer_y_top = location[1] + height
 
     ## Search for the sequence title ("SEQUENCE REQUIRED TO UPLOAD")
+    sequences_template = constants.CV_TEMPLATES.titles[constants.Title.SEQUENCES]
     sequence_title_results = cv2.matchTemplate(
         screenshot_data.screenshot,
-        constants.CV_SEQUENCES_TITLE_TEMPLATE,
+        sequences_template,
         cv2.TM_CCOEFF_NORMED,
     )
     _, confidence, _, location = cv2.minMaxLoc(sequence_title_results)
@@ -312,15 +359,16 @@ def parse_screen_bounds(
         )
 
     ## Assign coordinate elements
-    width, height = constants.CV_SEQUENCES_TITLE_TEMPLATE.shape[1::-1]
+    width = constants.BASE_SEQUENCE_TEMPLATE_WIDTH
+    height = sequences_template.shape[0]
     buffer_y_bottom = location[1]
-    code_matrix_y_top = sequences_y_top = targets_y_top = location[1] + height
-    targets_x_top = sequences_x_bottom = location[0] + width
+    code_matrix_y_top = sequences_y_top = daemons_y_top = location[1] + height
+    daemons_x_top = sequences_x_bottom = location[0] + width
 
     ## Estimates for the rest of the search bounds
     bottom_cutoff = code_matrix_y_top + int(constants.ANALYSIS_IMAGE_SIZE[1] * 0.5)
-    code_matrix_y_bottom = sequences_y_bottom = targets_y_bottom = bottom_cutoff
-    targets_x_bottom = buffer_x_bottom = int(constants.ANALYSIS_IMAGE_SIZE[0] * 0.85)
+    code_matrix_y_bottom = sequences_y_bottom = daemons_y_bottom = bottom_cutoff
+    daemons_x_bottom = buffer_x_bottom = int(constants.ANALYSIS_IMAGE_SIZE[0] * 0.9)
 
     return models.ScreenBounds(
         code_matrix=(
@@ -335,9 +383,9 @@ def parse_screen_bounds(
             (sequences_x_top, sequences_y_top),
             (sequences_x_bottom, sequences_y_bottom),
         ),
-        targets=(
-            (targets_x_top, targets_y_top),
-            (targets_x_bottom, targets_y_bottom),
+        daemons=(
+            (daemons_x_top, daemons_y_top),
+            (daemons_x_bottom, daemons_y_bottom),
         ),
     )
 
@@ -346,7 +394,7 @@ def parse_matrix_data(
     config: models.Config,
     screenshot_data: models.ScreenshotData,
     screen_bounds: models.ScreenBounds,
-) -> List[List[int]]:
+) -> Tuple[Tuple[int, ...], ...]:
     """Parses the section of the screenshot to get matrix data."""
     box = screen_bounds.code_matrix
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
@@ -355,7 +403,7 @@ def parse_matrix_data(
     x_max = y_max = 0
     x_min = y_min = 9999
     all_code_points = dict()
-    for index, template in enumerate(constants.CV_CODE_TEMPLATES):
+    for index, template in enumerate(constants.CV_TEMPLATES.codes):
         code_results = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
         matches = numpy.where(code_results >= config.matrix_code_detection_threshold)
         all_code_points[index] = code_points = list(zip(*matches[::-1]))
@@ -397,7 +445,7 @@ def parse_matrix_data(
                     "Matrix code detection could not detect all codes."
                 )
 
-    return data
+    return tuple(tuple(it) for it in data)
 
 
 def parse_buffer_size_data(
@@ -418,7 +466,7 @@ def parse_buffer_size_data(
     x_max = 0
     x_min = 9999
     buffer_box_results = cv2.matchTemplate(
-        crop, constants.CV_BUFFER_BOX_TEMPLATE, cv2.TM_CCOEFF_NORMED
+        crop, constants.CV_TEMPLATES.buffer_box, cv2.TM_CCOEFF_NORMED
     )
     matches = numpy.where(buffer_box_results >= config.buffer_box_detection_threshold)
     buffer_box_points = list(zip(*matches[::-1]))
@@ -450,11 +498,15 @@ def parse_buffer_size_data(
     return buffer_size
 
 
-def parse_sequences_data(
+def parse_daemons_data(
     config: models.Config,
     screenshot_data: models.ScreenshotData,
     screen_bounds: models.ScreenBounds,
-) -> List[List[int]]:
+) -> Tuple[
+    Tuple[Tuple[int, ...], ...],  ## Sequences
+    Tuple[Optional[constants.Daemon], ...],  ## Daemon enums
+    Tuple[str, ...],  ## Daemon names
+]:
     """Parses the section of the screenshot to get sequences data."""
     box = screen_bounds.sequences
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
@@ -463,7 +515,7 @@ def parse_sequences_data(
     y_max = 0
     x_min = y_min = 9999
     all_sequence_points = dict()
-    for index, template in enumerate(constants.CV_CODE_SMALL_TEMPLATES):
+    for index, template in enumerate(constants.CV_TEMPLATES.small_codes):
         code_results = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
         matches = numpy.where(code_results >= config.sequence_code_detection_threshold)
         all_sequence_points[index] = code_points = list(zip(*matches[::-1]))
@@ -502,51 +554,101 @@ def parse_sequences_data(
                     f"Sequence {sequence_index + 1} could not be parsed correctly."
                 )
 
-    return data
+    sequences = tuple(tuple(it) for it in data)
 
-
-def parse_targets_data(
-    config: models.Config,
-    screenshot_data: models.ScreenshotData,
-    screen_bounds: models.ScreenBounds,
-    sequences_size: int,
-) -> List[str]:
-    """Parses the section of the screenshot to get targets data."""
-    box = screen_bounds.targets
+    ## Parse daemon data
+    box = screen_bounds.daemons
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
 
-    ## Search for each target
-    y_max = 0
-    x_min = y_min = 9999
-    all_target_points = dict()
-    for target_name, template in constants.CV_TARGET_TEMPLATES.items():
-        target_results = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
-        _, confidence, _, location = cv2.minMaxLoc(target_results)
-        if confidence >= config.target_detection_threshold:
-            all_target_points[target_name] = location
-            if location[0] < x_min:
-                x_min = location[0]
-            if location[1] > y_max:
-                y_max = location[1]
-            if location[1] < y_min:
-                y_min = location[1]
+    daemons: List[Optional[constants.Daemon]] = [None for _ in range(sequences_size)]
+    daemon_names = ["UNKNOWN" for _ in range(sequences_size)]
 
-    LOG.debug(f"Target parsing found min/max: ({x_min}, {y_min}) / ({y_max})")
+    ## Search for each daemon
+    for daemon_enum, template in constants.CV_TEMPLATES.daemons.items():
+        daemon_results = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
+        _, confidence, _, location = cv2.minMaxLoc(daemon_results)
+        if confidence >= config.daemon_detection_threshold:
+            daemon_index = round(
+                (location[1] - y_min) / constants.CV_SEQUENCES_Y_GAP_SIZE
+            )
+            daemons[daemon_index] = daemon_enum
+            daemon_names[daemon_index] = constants.CV_TEMPLATES.daemon_names.get(
+                daemon_enum, "UNKNOWN"
+            )
+            if all(daemons):
+                break
 
-    ## NOTE: There's a bug here. If the first target is unknown, y_min is incorrect
-    targets_size = round((y_max - y_min) / constants.CV_SEQUENCES_Y_GAP_SIZE) + 1
-    data = ["UNKNOWN" for _ in range(sequences_size)]
-    for target_name, point in all_target_points.items():
-        target_index = round((point[1] - y_min) / constants.CV_SEQUENCES_Y_GAP_SIZE)
-        data[target_index] = target_name
+    LOG.debug(f"Daemon parsing found daemons: {daemons}")
+    LOG.debug(f"Daemon parsing found daemon names: {daemon_names}")
 
-    LOG.debug(f"Target parsing found data: {data}")
-    return data
+    return sequences, tuple(daemons), tuple(daemon_names)
 
 
+def force_calculate_sequence_path_data(
+    config: models.Config,
+    breach_protocol_data: models.BreachProtocolData,
+) -> Tuple[models.SequencePathData, Tuple[int, ...]]:
+    """Runs calculations until it is solved by reducing selected sequence indices."""
+    selected_sequence_indices = list(range(len(breach_protocol_data.sequences)))
+    sequence_path_data = calculate_sequence_path_data(
+        breach_protocol_data, tuple(selected_sequence_indices)
+    )
+
+    if sequence_path_data.solution_valid:
+        return sequence_path_data, tuple(selected_sequence_indices)
+
+    LOG.debug("Force calculation required")
+
+    ## Tries to maximize datamine rewards if all daemons are datamines
+    if (
+        not set(config.daemon_priorities).intersection(constants.DATAMINE_DAEMONS)
+        and set(breach_protocol_data.daemons) == constants.DATAMINE_DAEMONS
+    ):
+        LOG.debug("Detected daemons to all be datamine daemons")
+        original_indices = selected_sequence_indices
+        best_selections: Tuple[Tuple[int, ...], ...] = (
+            (1, 2),
+            (0, 2),
+            (2,),
+            (0, 1),
+            (1,),
+            (0,),
+            tuple(),
+        )
+        for selected_sequence_indices in best_selections:  # type: ignore
+            sequence_path_data = calculate_sequence_path_data(
+                breach_protocol_data, selected_sequence_indices  # type: ignore
+            )
+            if sequence_path_data.solution_valid:
+                break
+        else:
+            LOG.warning("Forced datamine autohack couldn't find a solution")
+
+    ## Otherwise, remove daemons one by one until the matrix is solvable
+    else:
+        for daemon_index in selected_sequence_indices[:]:
+            daemon_enum = breach_protocol_data.daemons[daemon_index]
+            if (
+                daemon_enum not in constants.COMMON_DAEMONS
+                or daemon_enum in config.daemon_priorities
+            ):
+                continue
+            selected_sequence_indices.remove(daemon_index)
+            sequence_path_data = calculate_sequence_path_data(
+                breach_protocol_data, tuple(selected_sequence_indices)
+            )
+            if sequence_path_data.solution_valid:
+                break
+        else:
+            LOG.warning("Forced autohack couldn't find a solution")
+
+    return sequence_path_data, tuple(selected_sequence_indices)
+
+
+@functools.lru_cache(maxsize=constants.MEMOIZE_SIZE)
 def calculate_sequence_path_data(
     breach_protocol_data: models.BreachProtocolData,
-    selected_sequence_indices: Optional[Tuple[int, ...]] = None,
+    selected_sequence_indices: Tuple[int, ...],
 ) -> models.SequencePathData:
     ## Please dear god don't let there be a bug with the solver.
     ## I will 100% not remember how this works if I need to come back and debug it.
@@ -617,10 +719,25 @@ def calculate_sequence_path_data(
         )
         _recursive_build(new_sequence, remaining_permutation[1:])
 
-    permutations = itertools.permutations(
-        selected_sequence_indices or range(len(base_sequences))
-    )
+    permutations = itertools.permutations(selected_sequence_indices)
     for current_permutation in permutations:
+        ## Remove permutation indices that are sequences found in another sequence
+        while True:
+            current_sequences = [base_sequences[it] for it in current_permutation]
+            for permutation_index in current_permutation:
+                test_sequence = base_sequences[permutation_index]
+                test_permutation = list(current_permutation)
+                test_permutation.remove(permutation_index)
+                compare_sequences = [base_sequences[it] for it in test_permutation]
+                if any(test_sequence in it for it in compare_sequences):
+                    LOG.debug(
+                        f"{test_sequence} in its entirety found in another sequence "
+                        f"({compare_sequences})"
+                    )
+                    current_permutation = tuple(test_permutation)
+                    break
+            else:
+                break
         _recursive_build(
             models.Sequence(string="", contiguous_block_indices=tuple()),
             current_permutation,
@@ -637,13 +754,32 @@ def calculate_sequence_path_data(
 
     ## Too many potential solutions to calculate, skip trying to find the shortest
     ## solution if the solution is invalid
-    skip_invalid_immediately = (
-        len(potential_solutions) > constants.MAX_POTENTIAL_SOLUTION_THRESHOLD
+    solution_size_threshold = constants.MAX_SOLUTION_PATH_LENGTH
+    total_sequence_codes = sum(
+        len(it.data) for it in sorted_converted_potential_solutions
     )
-    if skip_invalid_immediately:
+    size_estimate = (
+        total_sequence_codes
+        * breach_protocol_data.matrix_size
+        * breach_protocol_data.buffer_size
+    )
+    LOG.debug(f"Computational size estimate: {size_estimate}")
+    computationally_complex = size_estimate > constants.MAX_SIZE_ESTIMATE_THRESHOLD
+    if computationally_complex:
         LOG.warning(
-            f"Too many potential solutions found ({len(potential_solutions)}), "
-            "will skip trying to find shortest invalid solution."
+            "Computational time estimated to take too long "
+            f"(> {constants.MAX_SIZE_ESTIMATE_THRESHOLD}), "
+            "will skip trying to find shortest invalid solution. "
+            f"Total solutions: {len(sorted_converted_potential_solutions)}, "
+            f"total sequence codes: {total_sequence_codes}, "
+            f"matrix size: {breach_protocol_data.matrix_size}, "
+            f"buffer size: {breach_protocol_data.buffer_size}."
+        )
+        solution_size_threshold = breach_protocol_data.buffer_size
+        sorted_converted_potential_solutions = tuple(
+            it
+            for it in sorted_converted_potential_solutions
+            if len(it.data) <= breach_protocol_data.buffer_size
         )
 
     ## Lexically define before _recursive_solve to keep mypy happy
@@ -664,17 +800,14 @@ def calculate_sequence_path_data(
         """
         nonlocal current_solutions
 
-        ## Throw away solutions that are waaaaaayyy too long
-        if skip_invalid_immediately or len(path) > constants.MAX_SOLUTION_PATH_LENGTH:
-            return
-
         ## End of sequence reached, add to current solutions
         if sequence_index == len(sequence.data):
             current_solutions.append(path)
             return
 
+        ## Throw away solutions that are waaaaaayyy too long
         ## At most, explore 3 extra nodes before calling it quits
-        if explore_count > 3:
+        if len(path) > solution_size_threshold or explore_count > 3:
             return
 
         new_block = sequence_index in sequence.contiguous_block_indices
@@ -717,6 +850,9 @@ def calculate_sequence_path_data(
                 if not solution_valid or shorter_than_current_best:
                     shortest_solution_path = solution_path
                     solution_valid = True
+                    ## Skip trying to find other solutions, just find one that works
+                    if computationally_complex:
+                        break
             elif not solution_valid and shorter_than_current_best:
                 shortest_solution_path = solution_path
 
@@ -733,8 +869,10 @@ def calculate_sequence_path_data(
         shortest_solution=shortest_solution,
         shortest_solution_path=shortest_solution_path,
         solution_valid=solution_valid,
+        computationally_complex=computationally_complex,
     )
     LOG.debug(f"Sequence solver found sequence path data: {sequence_path_data}")
+
     return sequence_path_data
 
 
@@ -745,7 +883,7 @@ def autohack(
     sequence_path_data: models.SequencePathData,
 ):
     """Clicks the sequence solution in the game window."""
-    _focus_game_window()
+    _focus_game_window(config)
     in_row = True
     key_sequence: List[str] = list()
     cursor_position = (0, 0)
@@ -767,7 +905,7 @@ def autohack(
                     key_sequence.append(key)
         in_row = not in_row
         cursor_position = coordinate
-        key_sequence.append("f")
+        key_sequence.append(config.autohack_activation_key)
     LOG.debug(f"Autohacker built key sequence: {key_sequence}")
     pyautogui.press("right")
     time.sleep(0.05)

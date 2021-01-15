@@ -13,11 +13,19 @@ import system_hotkey  # type: ignore
 
 from PIL import Image  # type: ignore
 from PySide2.QtCore import QFile, QObject, QRect, Qt, QThread, Signal
-from PySide2.QtGui import QCloseEvent, QFontDatabase, QIcon, QPixmap
+from PySide2.QtGui import (
+    QCloseEvent,
+    QFontDatabase,
+    QHideEvent,
+    QIcon,
+    QPixmap,
+    QShowEvent,
+)
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtWidgets import (
     QApplication,
     QCheckBox,
+    QComboBox,
     QDoubleSpinBox,
     QFileDialog,
     QFrame,
@@ -93,6 +101,7 @@ class SolverWorker(Worker):
     matrix_overlay_image_signal = Signal(Image.Image)
     buffer_overlay_image_signal = Signal(Image.Image)
     solution_signal = Signal(models.SequencePathData)
+    sequence_selection_signal = Signal(tuple)
     sequence_path_data_available_signal = Signal(models.SequencePathData)
 
     def run(  # type: ignore
@@ -105,23 +114,35 @@ class SolverWorker(Worker):
             config,
             breach_protocol_data,
             selected_sequence_indices=selected_sequence_indices,
-            beep=False,
         )
 
     def _solve_and_signal(
         self,
         config: models.Config,
         breach_protocol_data: models.BreachProtocolData,
-        selected_sequence_indices: Optional[Tuple[int]] = None,
-        beep=True,
+        selected_sequence_indices: Optional[Tuple[int, ...]] = None,
+        force_solve: bool = False,
+        beep: bool = False,
     ) -> models.SequencePathData:
         """
         Convenience function for solving the matrix,
         generating the images, and emitting the proper signals on the worker.
         """
-        sequence_path_data = logic.calculate_sequence_path_data(
-            breach_protocol_data, selected_sequence_indices=selected_sequence_indices
-        )
+        if force_solve:
+            (
+                sequence_path_data,
+                selected_sequence_indices,
+            ) = logic.force_calculate_sequence_path_data(config, breach_protocol_data)
+        else:
+            if selected_sequence_indices is None:
+                selected_sequence_indices = tuple(
+                    range(len(breach_protocol_data.sequences))
+                )
+            sequence_path_data = logic.calculate_sequence_path_data(
+                breach_protocol_data,
+                selected_sequence_indices=selected_sequence_indices,
+            )
+        self.sequence_selection_signal.emit(selected_sequence_indices)  # type: ignore
         matrix_overlay_image = None
         if sequence_path_data.shortest_solution_path:
             image_size = (
@@ -137,7 +158,8 @@ class SolverWorker(Worker):
             self.matrix_overlay_image_signal.emit(matrix_overlay_image)  # type: ignore
         if sequence_path_data.solution_valid:
             buffer_sequence_image = logic.generate_buffer_sequence_image(
-                sequence_path_data.shortest_solution  # type: ignore
+                breach_protocol_data.buffer_size,
+                sequence_path_data.shortest_solution,  # type: ignore
             )
             self.buffer_overlay_image_signal.emit(buffer_sequence_image)  # type: ignore
             self.sequence_path_data_available_signal.emit(sequence_path_data)  # type: ignore
@@ -162,7 +184,9 @@ class AnalysisWorker(SolverWorker):
     analysis_finished_signal = Signal(bool)
 
     def run(  # type: ignore
-        self, config: models.Config, from_file: Optional[pathlib.Path] = None
+        self,
+        config: models.Config,
+        from_file: Optional[pathlib.Path] = None,
     ):
         self.status.emit("SCREEN")  # type: ignore
         screenshot_data = logic.grab_screenshot(config, from_file=from_file)
@@ -185,20 +209,27 @@ class AnalysisWorker(SolverWorker):
         buffer_boxes_image = logic.generate_buffer_boxes_image(buffer_size)
         self.buffer_image_signal.emit(buffer_boxes_image)  # type: ignore
 
-        self.status.emit("SEQUENCES")  # type: ignore
-        sequences = logic.parse_sequences_data(config, screenshot_data, screen_bounds)
-
-        self.status.emit("TARGETS")  # type: ignore
-        targets = logic.parse_targets_data(
-            config, screenshot_data, screen_bounds, len(sequences)
+        self.status.emit("DAEMONS")  # type: ignore
+        sequences, daemons, daemon_names = logic.parse_daemons_data(
+            config, screenshot_data, screen_bounds
         )
-        self.sequences_signal.emit(tuple(zip(sequences, targets)))  # type: ignore
+        sequence_selection_data = [
+            models.SequenceSelectionData(
+                daemon=daemon,
+                daemon_name=daemon_name,
+                sequence=sequence,
+                selected=False,
+            )
+            for daemon, daemon_name, sequence in zip(daemons, daemon_names, sequences)
+        ]
+        self.sequences_signal.emit(sequence_selection_data)  # type: ignore
         breach_protocol_data = models.BreachProtocolData(
             data=data,
             matrix_size=len(data),
             buffer_size=buffer_size,
             sequences=sequences,
-            targets=targets,
+            daemons=daemons,
+            daemon_names=daemon_names,
         )
         analysis_data = models.AnalysisData(
             breach_protocol_data=breach_protocol_data,
@@ -208,7 +239,12 @@ class AnalysisWorker(SolverWorker):
         self.analysis_data_available_signal.emit(analysis_data)  # type: ignore
 
         self.status.emit("SOLUTIONS")  # type: ignore
-        sequence_path_data = self._solve_and_signal(config, breach_protocol_data)
+        sequence_path_data = self._solve_and_signal(
+            config,
+            breach_protocol_data,
+            force_solve=config.force_autohack,
+            beep=config.enable_beeps,
+        )
 
         run_autohack = (
             sequence_path_data.solution_valid and config.auto_autohack and not from_file
@@ -319,7 +355,8 @@ class CPAH(ErrorHandlerMixin, QWidget):
                     self._error_handler_signal.emit(
                         models.Error(
                             exceptions.CPAHHotkeyRegistrationExceptions(exception)
-                        )
+                        ),
+                        self,
                     )
 
             return _decorated
@@ -330,6 +367,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
         ## State
         self.analyzing = False
         self.autohacking = False
+        self.configuration_screen_open = False
 
         ## Cache
         self.analysis_data: models.AnalysisData = None
@@ -375,6 +413,10 @@ class CPAH(ErrorHandlerMixin, QWidget):
         self.analyzing = False
         self.autohacking = False
 
+    def configuration_screen_open_changed(self, state: bool):
+        LOG.debug(f"Configuration screen open: {state}")
+        self.configuration_screen_open = state
+
     def cache_analysis_data(self, data: models.AnalysisData):
         LOG.debug(f"Caching analysis data: {data}")
         self.analysis_data = data
@@ -398,7 +440,10 @@ class CPAH(ErrorHandlerMixin, QWidget):
 
     def start_analysis(self, from_file: Optional[pathlib.Path] = None):
         LOG.debug("start_analysis")
-        if self.autohacking:
+        if self.configuration_screen_open:
+            LOG.debug("Ignoring analysis start because the config screen is open.")
+            return
+        elif self.autohacking:
             LOG.debug("Ignoring analysis start because autohacking is in progress.")
             return
         elif self.analyzing:
@@ -440,6 +485,9 @@ class CPAH(ErrorHandlerMixin, QWidget):
         thread_container.worker.solution_signal.connect(self.show_solution)
         thread_container.worker.analysis_data_available_signal.connect(
             self.cache_analysis_data
+        )
+        thread_container.worker.sequence_selection_signal.connect(
+            self.sequence_container.select_sequences
         )
         thread_container.worker.sequence_path_data_available_signal.connect(
             self.cache_sequence_path_data
@@ -514,6 +562,9 @@ class CPAH(ErrorHandlerMixin, QWidget):
         pyautogui.PAUSE = self.config.autohack_keypress_delay / 1000
         LOG.debug(f"Set pyautogui.PAUSE value to {pyautogui.PAUSE}")
 
+        LOG.debug(f"Setting detection language to {self.config.detection_language}")
+        constants.CV_TEMPLATES.load_language(self.config.detection_language)
+
         existing_binds = tuple(self.hotkey.keybinds)
         for existing_bind in existing_binds:
             LOG.debug(f"Unregistering bind {existing_bind}")
@@ -534,17 +585,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
             self.autohack_button.setEnabled(True)
         else:
             self.autohack_button.setEnabled(False)
-            if sequence_path_data.shortest_solution:
-                converted_solution = "  ".join(
-                    logic.convert_code(sequence_path_data.shortest_solution)
-                )
-                self.show_buffer_error_message(
-                    length=len(sequence_path_data.shortest_solution),
-                    tooltip=converted_solution,
-                    keep_path_overlay=True,
-                )
-            else:
-                self.show_buffer_error_message()
+            self.show_buffer_error_message(sequence_path_data)
 
     def recalculate_solution(self):
         LOG.debug("recalculate_solution")
@@ -561,24 +602,28 @@ class CPAH(ErrorHandlerMixin, QWidget):
         thread_container.worker.buffer_overlay_image_signal.connect(
             self.set_buffer_overlay_image
         )
+        thread_container.worker.sequence_selection_signal.connect(
+            self.sequence_container.select_sequences
+        )
         thread_container.worker.sequence_path_data_available_signal.connect(
             self.cache_sequence_path_data
         )
 
         enabled_selections = list()
         for index, sequence_selection in enumerate(self.sequence_container.sequences):
-            if sequence_selection.selected:
+            if sequence_selection.data.selected:
                 enabled_selections.append(index)
 
         ## All entries deselected
         if not enabled_selections:
             self.set_matrix_overlay_image()
             self.set_buffer_overlay_image()
+            self.sequence_container.select_sequences(tuple())
         else:
             start_worker(
                 self.config,
                 self.analysis_data.breach_protocol_data,
-                enabled_selections,
+                tuple(enabled_selections),
             )
 
     def _convert_and_set_image(self, image: Image.Image, label: QLabel):
@@ -625,21 +670,27 @@ class CPAH(ErrorHandlerMixin, QWidget):
             self.set_buffer_image(self.buffer_image_cache)
             self._convert_and_set_image(image, self.buffer_overlay_label)
 
-    def show_buffer_error_message(
-        self,
-        length: Optional[int] = None,
-        tooltip: Optional[str] = None,
-        keep_path_overlay: bool = False,
-    ):
+    def show_buffer_error_message(self, sequence_path_data: models.SequencePathData):
         LOG.debug("Setting buffer error message")
+        tooltip: Optional[str] = None
+        if sequence_path_data.shortest_solution:
+            keep_path_overlay = True
+            tooltip = "  ".join(
+                logic.convert_code(sequence_path_data.shortest_solution)
+            )
+            length = len(sequence_path_data.shortest_solution)
+            message = f"SEQUENCE TOO LONG ({length})"
+        else:
+            keep_path_overlay = False
+            if sequence_path_data.computationally_complex:
+                message = "SEQUENCE TOO LONG"
+            else:
+                message = "NO VALID PATH FOUND"
+
         if not keep_path_overlay:
             self.set_matrix_overlay_image()
         self.set_buffer_image()
         self.buffer_overlay_label.setStyleSheet(constants.BUFFER_ERROR_STYLE)
-        if length is None:
-            message = "NO VALID PATH FOUND"
-        else:
-            message = f"SEQUENCE TOO LONG ({length})"
         self.buffer_overlay_label.setText(message)
         self.buffer_overlay_label.setToolTip(tooltip)
 
@@ -716,6 +767,9 @@ class CPAH(ErrorHandlerMixin, QWidget):
         self.configuration_screen.configuration_changed_signal.connect(
             self.configuration_changed
         )
+        self.configuration_screen.configuration_screen_open_signal.connect(
+            self.configuration_screen_open_changed
+        )
 
         self.reset_displays()
 
@@ -733,15 +787,15 @@ class SequenceContainer(ErrorHandlerMixin, QWidget):
         self.setLayout(layout)
 
     @ErrorHandlerMixin.no_self_focus
-    def set_sequences(self, sequences: Optional[List[Tuple[List[int], str]]]):
+    def set_sequences(self, sequences: Optional[List[models.SequenceSelectionData]]):
         layout = self.layout()
         for old_sequence in self.sequences:
             layout.removeWidget(old_sequence)
             old_sequence.deleteLater()
 
         self.sequences = list()
-        for sequence, target in sequences or list():
-            selection = SequenceSelection(sequence, target)
+        for sequence_selection_data in sequences or list():
+            selection = SequenceSelection(sequence_selection_data)
             selection.selection_updated.connect(self.parent_widget.recalculate_solution)
             layout.addWidget(selection)
             self.sequences.append(selection)
@@ -754,6 +808,12 @@ class SequenceContainer(ErrorHandlerMixin, QWidget):
             "" if self.sequences else "SEQUENCES"
         )
 
+    @ErrorHandlerMixin.no_self_focus
+    def select_sequences(self, selections: Tuple[int, ...]):
+        LOG.debug(f"Selecting sequences: {selections}")
+        for index, sequence_selection in enumerate(self.sequences):
+            sequence_selection.set_selected(index in selections)
+
 
 @ErrorHandlerMixin.class_decorator
 class SequenceSelection(ErrorHandlerMixin, QFrame):
@@ -762,30 +822,54 @@ class SequenceSelection(ErrorHandlerMixin, QFrame):
     selection_updated = Signal()
 
     @ErrorHandlerMixin.no_self_focus
-    def __init__(self, sequence: List[int], target: str):
+    def __init__(self, sequence_selection_data: models.SequenceSelectionData):
         super().__init__()
-        self.selected = True
+        self.data = sequence_selection_data
         self.setCursor(Qt.PointingHandCursor)
-        sequence_text = "  ".join(logic.convert_code(sequence))
+        sequence_text = "  ".join(logic.convert_code(self.data.sequence))
         self.sequence_label = QLabel(self)
         self.sequence_label.setText(sequence_text)
         self.sequence_label.setGeometry(QRect(10, 30, 350, 20))
-        self.target_label = QLabel(self)
-        self.target_label.setText(target)
-        self.target_label.setGeometry(QRect(10, 10, 350, 20))
+        self.daemon_label = QLabel(self)
+        self.daemon_label.setText(self.data.daemon_name)
+        self.daemon_label.setGeometry(QRect(10, 10, 350, 20))
+        self.update_appearance()
+
+    @ErrorHandlerMixin.no_self_focus
+    def set_selected(self, selected: bool):
+        self.data.selected = selected
+        self.update_appearance()
+
+    @ErrorHandlerMixin.no_self_focus
+    def update_appearance(self):
+        color = "white" if self.data.selected else constants.SELECTION_OFF_COLOR
+        self.setStyleSheet(f"color: {color};\nborder-color: {color};")
 
     @ErrorHandlerMixin.no_self_focus
     def mouseReleaseEvent(self, event):
-        self.selected = not self.selected
-        color = "white" if self.selected else constants.SELECTION_OFF_COLOR
-        self.setStyleSheet(f"color: {color};\nborder-color: {color};")
+        self.data.selected = not self.data.selected
         self.selection_updated.emit()
+        ## Appearance is later updated via the container calling set_selected
 
 
 @ErrorHandlerMixin.class_decorator
 class ConfigurationScreen(ErrorHandlerMixin, QWidget):
 
+    configuration_screen_open_signal = Signal(bool)
     configuration_changed_signal = Signal()
+
+    _keep_mapping = {
+        constants.Daemon.DATAMINE_V1: "keepDatamine1CheckBox",
+        constants.Daemon.DATAMINE_V2: "keepDatamine2CheckBox",
+        constants.Daemon.DATAMINE_V3: "keepDatamine3CheckBox",
+        constants.Daemon.ICEPICK: "keepIcepickCheckBox",
+        constants.Daemon.MASS_VULNERABILITY: "keepMassVulnerabilityCheckBox",
+        constants.Daemon.CAMERA_SHUTDOWN: "keepCameraShutdownCheckBox",
+        constants.Daemon.TURRET_SHUTDOWN: "keepTurretShutdownCheckBox",
+        constants.Daemon.FRIENDLY_TURRETS: "keepFriendlyTurretsCheckBox",
+        constants.Daemon.OPTICS_JAMMER: "keepOpticsJammerCheckBox",
+        constants.Daemon.WEAPONS_JAMMER: "keepWeaponsJammerCheckBox",
+    }
 
     def __init__(self, parent_widget: CPAH):
         super().__init__()
@@ -804,7 +888,7 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
         self.setWindowFlags(self.windowFlags() | Qt.MSWindowsFixedSizeDialogHint)
         self.setWindowModality(Qt.ApplicationModal)
 
-        ## Get inputs and set from configuration values
+        ## Interface settings
         self.automatic_autohacking_check_box = self.findChild(
             QCheckBox, "automaticAutohackingCheckBox"
         )
@@ -814,9 +898,9 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
         self.analysis_hotkey_line_edit = self.findChild(
             QLineEdit, "analysisHotkeyLineEdit"
         )
-        self.autohack_keypress_delay_spin_box = self.findChild(
-            QSpinBox, "autohackKeypressDelaySpinBox"
-        )
+        self.focus_delay_spin_box = self.findChild(QSpinBox, "focusDelaySpinBox")
+
+        ## Detection settings
         self.buffer_size_override_spin_box = self.findChild(
             QSpinBox, "bufferSizeOverrideSpinBox"
         )
@@ -824,17 +908,32 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
         self.matrix_codes_spin_box = self.findChild(
             QDoubleSpinBox, "matrixCodesSpinBox"
         )
-        self.target_sequence_spin_box = self.findChild(
-            QDoubleSpinBox, "targetSequenceSpinBox"
+        self.daemon_sequence_spin_box = self.findChild(
+            QDoubleSpinBox, "daemonSequenceSpinBox"
         )
         self.buffer_boxes_spin_box = self.findChild(
             QDoubleSpinBox, "bufferBoxesSpinBox"
         )
-        self.target_names_spin_box = self.findChild(
-            QDoubleSpinBox, "targetNamesSpinBox"
+        self.daemon_names_spin_box = self.findChild(
+            QDoubleSpinBox, "daemonNamesSpinBox"
+        )
+        self.detection_language_combo_box = self.findChild(
+            QComboBox, "detectionLanguageComboBox"
         )
 
-        self.fill_values()
+        ## Autohack settings
+        self.force_autohack_check_box = self.findChild(
+            QCheckBox, "forceAutohackCheckBox"
+        )
+        self.keep_daemons: Dict[constants.Daemon, QCheckBox] = dict()
+        for daemon_enum, widget_id in self._keep_mapping.items():
+            self.keep_daemons[daemon_enum] = self.findChild(QCheckBox, widget_id)
+        self.activation_key_line_edit = self.findChild(
+            QLineEdit, "activationKeyLineEdit"
+        )
+        self.autohack_keypress_delay_spin_box = self.findChild(
+            QSpinBox, "autohackKeypressDelaySpinBox"
+        )
 
         ## Connect buttons
         self.ok_button = self.findChild(QPushButton, "okButton")
@@ -849,16 +948,40 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
     def fill_values(self):
         """Fills in the configuration fields from loaded config values."""
         config = self.parent_widget.config
+
+        ## Interface settings
         self.automatic_autohacking_check_box.setChecked(config.auto_autohack)
         self.beep_notifications_check_box.setChecked(config.enable_beeps)
         self.analysis_hotkey_line_edit.setText(" + ".join(config.analysis_hotkey))
-        self.autohack_keypress_delay_spin_box.setValue(config.autohack_keypress_delay)
+        self.focus_delay_spin_box.setValue(config.game_focus_delay)
+
+        ## Detection settings
         self.buffer_size_override_spin_box.setValue(config.buffer_size_override)
         self.core_text_spin_box.setValue(config.core_detection_threshold)
         self.matrix_codes_spin_box.setValue(config.matrix_code_detection_threshold)
-        self.target_sequence_spin_box.setValue(config.sequence_code_detection_threshold)
+        self.daemon_sequence_spin_box.setValue(config.sequence_code_detection_threshold)
         self.buffer_boxes_spin_box.setValue(config.buffer_box_detection_threshold)
-        self.target_names_spin_box.setValue(config.target_detection_threshold)
+        self.daemon_names_spin_box.setValue(config.daemon_detection_threshold)
+        self.detection_language_combo_box.clear()
+        self.detection_language_combo_box.addItems(
+            constants.TEMPLATE_LANGUAGE_DATA.keys()
+        )
+        self.detection_language_combo_box.setCurrentIndex(
+            list(constants.TEMPLATE_LANGUAGE_DATA).index(config.detection_language)
+        )
+
+        ## Autohack settings
+        self.force_autohack_check_box.setChecked(config.force_autohack)
+        for daemon_enum, keep_daemon in self.keep_daemons.items():
+            keep_daemon.setChecked(daemon_enum in config.daemon_priorities)
+        self.activation_key_line_edit.setText(config.autohack_activation_key)
+        self.autohack_keypress_delay_spin_box.setValue(config.autohack_keypress_delay)
+
+    def showEvent(self, event: QShowEvent):
+        self.configuration_screen_open_signal.emit(True)  # type: ignore
+
+    def hideEvent(self, event: QHideEvent):
+        self.configuration_screen_open_signal.emit(False)  # type: ignore
 
     def closeEvent(self, event: QCloseEvent):
         self.close()
@@ -867,23 +990,35 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
         LOG.debug(f"Closing configuration window (save={save})")
         if save:
             test = self.parent_widget.config.copy(deep=True)
+            ## Interface settings
             test.auto_autohack = self.automatic_autohacking_check_box.isChecked()
             test.enable_beeps = self.beep_notifications_check_box.isChecked()
-            test.autohack_keypress_delay = self.autohack_keypress_delay_spin_box.value()
-            test.buffer_size_override = self.buffer_size_override_spin_box.value()
-            test.core_detection_threshold = self.core_text_spin_box.value()
-            test.matrix_code_detection_threshold = self.matrix_codes_spin_box.value()
-            test.sequence_code_detection_threshold = (
-                self.target_sequence_spin_box.value()
-            )
-            test.buffer_box_detection_threshold = self.buffer_boxes_spin_box.value()
-            test.target_detection_threshold = self.target_names_spin_box.value()
             hotkey_string = self.analysis_hotkey_line_edit.text().lower().strip()
             if hotkey_string:
                 hotkeys = list(it.strip() for it in hotkey_string.split("+"))
             else:
                 hotkeys = list()
             test.analysis_hotkey = hotkeys
+            ## Detection settings
+            test.buffer_size_override = self.buffer_size_override_spin_box.value()
+            test.core_detection_threshold = self.core_text_spin_box.value()
+            test.matrix_code_detection_threshold = self.matrix_codes_spin_box.value()
+            test.sequence_code_detection_threshold = (
+                self.daemon_sequence_spin_box.value()
+            )
+            test.buffer_box_detection_threshold = self.buffer_boxes_spin_box.value()
+            test.daemon_detection_threshold = self.daemon_names_spin_box.value()
+            selected_language = self.detection_language_combo_box.currentText()
+            test.detection_language = selected_language
+            ## Autohack settings
+            test.force_autohack = self.force_autohack_check_box.isChecked()
+            test.daemon_priorities = [
+                k for k, v in self.keep_daemons.items() if v.isChecked()
+            ]
+            test.autohack_activation_key = (
+                self.activation_key_line_edit.text().lower().strip()
+            )
+            test.autohack_keypress_delay = self.autohack_keypress_delay_spin_box.value()
             try:
                 test.validate(test.dict())
             except ValueError as exception:

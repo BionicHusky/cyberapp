@@ -90,6 +90,6 @@ class CPAHSequenceParseFailedException(CPAHDataParseFailedException):
         super().__init__(message, detection_type="sequence code")
 
 
-class CPAHTargetParseFailedException(CPAHDataParseFailedException):
+class CPAHDaemonParseFailedException(CPAHDataParseFailedException):
     def __init__(self, message: str):
-        super().__init__(message, detection_type="target")
+        super().__init__(message, detection_type="daemon")
