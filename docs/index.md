@@ -13,9 +13,11 @@ Check out the video below for a quick demonstration:
 * Automatic matrix code and sequence detection using OpenCV
 * Selectable daemons in case your buffer size is not large enough
 * Autohacking by sending keys to solve the matrix for you
+* Forced autohacking and optimized datamine rewards
 * Configurable hotkey to prevent the need to switch windows
 * Sound notifications for people with only one monitor
 * Configurable detection and override settings if you are playing at a small resolution
+* Support for Cyberpunk running in some [other languages](development/#adding-languages)
 
 Internally, the code is linted with [Black](https://github.com/psf/black){target=_blank}
 and [mypy](https://github.com/python/mypy){target=_blank},
