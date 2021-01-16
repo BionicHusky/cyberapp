@@ -95,6 +95,8 @@ based on the daemons you selected.
     If you are running Cyberpunk as an administrator, you will also need to run CPAH as an
     administrator, otherwise autohacking will not work.
 
+    Additionally, autohacking requires Cyberpunk 1.05 or newer.
+
 ### Configuration
 
 CPAH can be configured to be more friendly for single monitor users, and for those running

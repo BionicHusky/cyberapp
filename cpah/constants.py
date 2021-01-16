@@ -129,7 +129,7 @@ class Title(str, enum.Enum):
 TEMPLATE_LANGUAGE_DATA: Dict[str, Dict] = dict()
 for _language_directory in (IMAGES_DIRECTORY / "languages").iterdir():
     with (_language_directory / "meta.json").open("rb") as _meta_file:
-        _metadata = json.load(_meta_file)
+        _metadata = json.loads(_meta_file.read().decode())
     _metadata["directory"] = _language_directory
     TEMPLATE_LANGUAGE_DATA[_metadata["name"]] = _metadata
 
@@ -221,6 +221,7 @@ CV_TEMPLATES = Templates()
 
 ## Opencv data parsing constants
 ANALYSIS_IMAGE_SIZE = (1920, 1080)
+ANALYSIS_IMAGE_RATIO = ANALYSIS_IMAGE_SIZE[0] / ANALYSIS_IMAGE_SIZE[1]
 CV_MATRIX_GAP_SIZE = 64.5
 CV_BUFFER_BOX_GAP_SIZE = 42.0
 CV_SEQUENCES_X_GAP_SIZE = 42.0

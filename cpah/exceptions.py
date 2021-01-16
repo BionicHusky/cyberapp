@@ -46,7 +46,9 @@ class CPAHScreenshotParseFailedException(CPAHException):
         super().__init__(
             f"{message}\n\nIs the breach protocol minigame screen active? "
             "If the confidence value is close to the threshold, you can lower the "
-            "threshold of core elements detection in the configuration screen."
+            "threshold of core elements detection in the configuration screen.\n\n"
+            "Additionally, ensure you have the correct detection language set "
+            "in the configuration menu."
         )
 
 

@@ -61,6 +61,24 @@ PS> mkdocs serve
 Then visit [http://localhost:8000](http://localhost:8000){target=_blank}
 for the [MkDocs](https://www.mkdocs.org/){target=_blank} generated documentation.
 
+# CI Pipeline
+
+CPAH is built and released using GitLab's CI pipeline.
+
+To access the builds from a certain branch, visit the
+[pipelines page](https://gitlab.com/jkchen2/cpah/-/pipelines){target=_blank},
+then filter by branch name. Select the build stage of the desired pipeline run:
+
+![filter](media/pipelines_00_filter.png)
+
+On the information bar on the right side under `Job artifacts`, select `Browse`:
+
+![browse](media/pipelines_01_browse.png)
+
+The binary is located under the `dist` directory:
+
+![artifact](media/pipelines_02_artifact.png)
+
 ## Adding languages
 
 While the CPAH program itself is fixed to English,
@@ -68,11 +86,20 @@ it can be configured to analyze screenshots of Cyberpunk running in other langua
 
 Currently, the following analysis languages are supported (not all daemons may be supported):
 
-| Language     | Notes                                            |
-| ------------ | ------------------------------------------------ |
-| Deutsch      | Missing some quest daemons                       |
-| English      |                                                  |
-| 简体中文 | Missing some quest daemons                       |
+| Language       | Notes                                            |
+| -------------- | ------------------------------------------------ |
+| العربية | Missing legendary and quest daemons              |
+| Deutsch        | Missing some quest daemons                       |
+| English        |                                                  |
+| Español       | Missing legendary and quest daemons              |
+| Français      | Missing legendary and quest daemons              |
+| Italiano       | Missing legendary and quest daemons              |
+| 日本語      | Missing legendary and quest daemons              |
+| 한국어      | Missing legendary and quest daemons              |
+| Polski         | Missing legendary and quest daemons              |
+| Português     | Missing legendary and quest daemons              |
+| Русский | Missing legendary and quest daemons              |
+| 简体中文   | Missing some quest daemons                       |
 
 In order to add new language support (or augment existing support),
 several template images will need to be saved for each part of the breach protocol screen,
