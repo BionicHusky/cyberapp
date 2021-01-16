@@ -61,7 +61,7 @@ PS> mkdocs serve
 Then visit [http://localhost:8000](http://localhost:8000){target=_blank}
 for the [MkDocs](https://www.mkdocs.org/){target=_blank} generated documentation.
 
-# CI Pipeline
+## CI Pipeline
 
 CPAH is built and released using GitLab's CI pipeline.
 
