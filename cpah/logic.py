@@ -270,10 +270,26 @@ def grab_screenshot(
 
         screenshot = screengrab_win32.getRectAsImage((x_start, y_start, x_end, y_end))
 
-    original_resolution = screenshot.size
-    LOG.debug(f"Screenshot resolution: {original_resolution}")
+    LOG.debug(f"Screenshot resolution: {screenshot.size}")
 
-    ## Detect and account for resolution aspect ratios other than 16:9
+    ## Aspect ratio correction based on resolution aspect ratio
+    width, height = screenshot.size
+    ratio_difference = constants.ANALYSIS_IMAGE_RATIO - (width / height)
+    if abs(ratio_difference) > 0.0001:
+        LOG.debug(f"Screenshot aspect ratio not 16:9, adjusting to match")
+        if ratio_difference < 0:  ## Wider than 16:9
+            width = round(height * constants.ANALYSIS_IMAGE_RATIO)
+            crop_x = round((screenshot.size[0] / 2) - (width / 2))
+            crop_y = 0
+        else:  ## More square than 16:9
+            height = round(width / constants.ANALYSIS_IMAGE_RATIO)
+            crop_y = round((screenshot.size[1] / 2) - (height / 2))
+            crop_x = 0
+        crop_region = (crop_x, crop_y, crop_x + width, crop_y + height)
+        LOG.debug(f"Aspect ratio crop region: {crop_region}")
+        screenshot = screenshot.crop(crop_region)
+
+    ## Aspect ratio correction based on detecting black bars
     for dimension_index in (0, 1):
         order = 1 if dimension_index else -1
         half_position = screenshot.size[dimension_index] / 2

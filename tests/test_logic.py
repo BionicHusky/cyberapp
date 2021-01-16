@@ -528,6 +528,28 @@ screenshot_test_data = [
         sequences=((2, 3),),
         daemon_names=("MASS VULNERABILITY",),
     ),
+    ScreenshotTestCase(
+        test_id="Small size, stretched aspect ratio",
+        screenshot_name="10.png",
+        buffer_box_detection_threshold=0.5,
+        matrix_data=(
+            (2, 4, 0, 4, 2, 3),
+            (3, 0, 0, 2, 4, 3),
+            (0, 2, 0, 0, 2, 4),
+            (0, 2, 1, 1, 2, 0),
+            (4, 0, 4, 1, 3, 4),
+            (4, 0, 3, 0, 1, 1),
+        ),
+        buffer_size=6,
+        sequences=((3, 4, 0), (0, 0, 2, 4), (3, 0, 0), (0, 4, 3), (2, 2, 2)),
+        daemon_names=(
+            "ICEPICK",
+            "MASS VULNERABILITY",
+            "TURRET SHUTDOWN",
+            "FRIENDLY TURRETS",
+            "CAMERA SHUTDOWN",
+        ),
+    ),
 ]
 
 
