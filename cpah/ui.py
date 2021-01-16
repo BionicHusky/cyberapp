@@ -518,6 +518,10 @@ class CPAH(ErrorHandlerMixin, QWidget):
                     "the mouse until the autohack is finished, because that will "
                     "reset the code matrix cursor position and will cause the "
                     "autohack to fail!\n\n"
+                    "Also note that if Cyberpunk is running in admin mode, CPAH will "
+                    "also need to be running in admin mode in order for autohacking "
+                    "to work. If autohacking doesn't do anything, try launching CPAH "
+                    "in admin mode.\n\n"
                     "This message will only be displayed once."
                 ),
                 QMessageBox.Ok,
