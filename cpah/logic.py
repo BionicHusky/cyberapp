@@ -421,9 +421,14 @@ def parse_matrix_data(
 
     ## Adjust code points based on maximum and minimum values
     matrix_size = round((x_max - x_min) / constants.CV_MATRIX_GAP_SIZE) + 1
+    matrix_size_y = round((y_max - y_min) / constants.CV_MATRIX_GAP_SIZE) + 1
     if matrix_size not in constants.VALID_MATRIX_SIZES:
         raise exceptions.CPAHMatrixParseFailedException(
             f"Detected matrix size is invalid ({matrix_size})."
+        )
+    elif matrix_size != matrix_size_y:
+        raise exceptions.CPAHMatrixParseFailedException(
+            f"Detected matrix size is not a square ({matrix_size}x{matrix_size_y})."
         )
 
     ## Yes, it would be easier to use a numpy 2d array. But I'm dumb.
@@ -858,7 +863,7 @@ def calculate_sequence_path_data(
 
     ## Calculate true solution from the shortest solution path
     shortest_solution = None
-    if shortest_solution_path:
+    if shortest_solution_path is not None:
         shortest_solution = tuple(
             breach_protocol_data.data[y][x] for x, y in shortest_solution_path
         )
