@@ -502,7 +502,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
         self._reset_analyze_button_text()
 
     def show_analyzing_status(self, status: str):
-        LOG.debug(f"Analyzing stutus set to: {status}")
+        LOG.debug(f"Analyzing status set to: {status}")
         self.analyze_button.setText(f"ANALYZING... [{status}]")
 
     def start_autohack(self):
@@ -999,6 +999,7 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
             else:
                 hotkeys = list()
             test.analysis_hotkey = hotkeys
+            test.game_focus_delay = self.focus_delay_spin_box.value()
             ## Detection settings
             test.buffer_size_override = self.buffer_size_override_spin_box.value()
             test.core_detection_threshold = self.core_text_spin_box.value()
