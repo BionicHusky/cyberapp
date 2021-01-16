@@ -129,7 +129,7 @@ class Title(str, enum.Enum):
 TEMPLATE_LANGUAGE_DATA: Dict[str, Dict] = dict()
 for _language_directory in (IMAGES_DIRECTORY / "languages").iterdir():
     with (_language_directory / "meta.json").open("rb") as _meta_file:
-        _metadata = json.load(_meta_file)
+        _metadata = json.loads(_meta_file.read().decode())
     _metadata["directory"] = _language_directory
     TEMPLATE_LANGUAGE_DATA[_metadata["name"]] = _metadata
 
