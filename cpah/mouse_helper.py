@@ -44,9 +44,9 @@ class Mouse:
         ## My best guess is that internally, the game keeps the cursor centered,
         ## thus making all mouse movement relative to where the cursor is in-game.
         self._raw_move((99999, 99999))
-        time.sleep(0.001)
+        time.sleep(0.05)
         self._raw_move((0, 0))
-        time.sleep(0.001)
+        time.sleep(0.05)
         self._raw_move(position)
         time.sleep(constants.MOUSE_MOVE_DELAY)
 
