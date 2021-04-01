@@ -8,6 +8,8 @@
         "mass_vulnerability": "VULNERABILITÀ GENERALE",
         "turret_shutdown": "SPEGNIMENTO TORRETTA",
         "friendly_turrets": "TORRETTE ALLEATE",
-        "camera_shutdown": "SPEGNIMENTO TELECAMERA"
+        "camera_shutdown": "SPEGNIMENTO TELECAMERA",
+        "weapons_jammer": "JAMMER ARMI",
+        "optics_jammer": "JAMMER OTTICHE"
     }
 }

@@ -86,20 +86,20 @@ it can be configured to analyze screenshots of Cyberpunk running in other langua
 
 Currently, the following analysis languages are supported (not all daemons may be supported):
 
-| Language       | Notes                                            |
-| -------------- | ------------------------------------------------ |
-| العربية | Missing legendary and quest daemons              |
-| Deutsch        | Missing some quest daemons                       |
-| English        |                                                  |
-| Español       | Missing legendary and quest daemons              |
-| Français      | Missing legendary and quest daemons              |
-| Italiano       | Missing legendary and quest daemons              |
-| 日本語      | Missing legendary and quest daemons              |
-| 한국어      | Missing legendary and quest daemons              |
-| Polski         | Missing legendary and quest daemons              |
-| Português     | Missing legendary and quest daemons              |
-| Русский | Missing legendary and quest daemons              |
-| 简体中文   | Missing some quest daemons                       |
+| Language       | Notes                      |
+| -------------- | -------------------------- |
+| العربية | Missing quest daemons      |
+| Deutsch        | Missing some quest daemons |
+| English        |                            |
+| Español       | Missing quest daemons      |
+| Français      | Missing quest daemons      |
+| Italiano       | Missing quest daemons      |
+| 日本語      | Missing quest daemons      |
+| 한국어      | Missing quest daemons      |
+| Polski         | Missing quest daemons      |
+| Português     | Missing quest daemons      |
+| Русский | Missing quest daemons      |
+| 简体中文   | Missing some quest daemons |
 
 In order to add new language support (or augment existing support),
 several template images will need to be saved for each part of the breach protocol screen,
@@ -115,20 +115,23 @@ and translations for daemons will have to be added to a file.
     All template images should have consistently 2 to 3 pixels bordering
     the content (unless there is no room).
 
+    Datamine v1, v2, and v3 daemons may have a hard time being detected at lower resolutions.
+    It may be better to create a template image of the numeric portion of the name instead.
+
     ![borders](media/languages_00_borders.png)
 
 Below is an example of a proper screenshot with template image regions labeled:
 
 ![labels](media/languages_01_labels.png)
 
-| Color  | Filename                 | Example                                                               | Required?                              |
-| ------ | ------------------------ | --------------------------------------------------------------------- | -------------------------------------- |
-| Red    | `title_breach.png`       | ![title_breach](media/template_examples/title_breach.png)             | Required                               |
-| Cyan   | `title_buffer.png`       | ![title_buffer](media/template_examples/title_buffer.png)             | Required                               |
-| Yellow | `title_sequences.png`    | ![title_sequences](media/template_examples/title_sequences.png)       | Required                               |
-| Purple | `daemon_<name>.png`      | ![daemon_datamine_v1](media/template_examples/daemon_datamine_v1.png) | Optional -- list of daemon names below |
-| Orange | `code_<index>.png`       | ![code_0](media/template_examples/code_0.png)                         | May be optional -- see below           |
-| Blue   | `code_<index>_small.png` | ![code_0_small](media/template_examples/code_0_small.png)             | May be optional -- see below           |
+| Color  | Filename                 | Example                                                           | Required?                              |
+| ------ | ------------------------ | ----------------------------------------------------------------- | -------------------------------------- |
+| Red    | `title_breach.png`       | ![title_breach](media/template_examples/title_breach.png)         | Required                               |
+| Cyan   | `title_buffer.png`       | ![title_buffer](media/template_examples/title_buffer.png)         | Required                               |
+| Yellow | `title_sequences.png`    | ![title_sequences](media/template_examples/title_sequences.png)   | Required                               |
+| Purple | `daemon_<name>.png`      | ![daemon_datamine_v1](media/template_examples/daemon_icepick.png) | Optional -- list of daemon names below |
+| Orange | `code_<index>.png`       | ![code_0](media/template_examples/code_0.png)                     | May be optional -- see below           |
+| Blue   | `code_<index>_small.png` | ![code_0_small](media/template_examples/code_0_small.png)         | May be optional -- see below           |
 
 #### Daemons
 
@@ -138,26 +141,38 @@ Below is an example of a proper screenshot with template image regions labeled:
     but CPAH should still be able to handle daemons that aren't included
     by labeling them as "unknown".
 
-| Filename                           | Image                                                                              | Daemon type              |
-| ---------------------------------- | ---------------------------------------------------------------------------------- | ------------------------ |
-| `daemon_datamine_v1.png`           | ![datamine_v1](media/template_examples/daemon_datamine_v1.png)                     | Common                   |
-| `daemon_datamine_v2.png`           | ![datamine_v2](media/template_examples/daemon_datamine_v2.png)                     | Common                   |
-| `daemon_datamine_v3.png`           | ![datamine_v3](media/template_examples/daemon_datamine_v3.png)                     | Common                   |
-| `daemon_icepick.png`               | ![icepick](media/template_examples/daemon_icepick.png)                             | Common                   |
-| `daemon_mass_vulnerability.png`    | ![mass_vulnerability](media/template_examples/daemon_mass_vulnerability.png)       | Perk unlocked            |
-| `daemon_camera_shutdown.png`       | ![camera_shutdown](media/template_examples/daemon_camera_shutdown.png)             | Perk unlocked            |
-| `daemon_friendly_turrets.png`      | ![friendly_turrets](media/template_examples/daemon_friendly_turrets.png)           | Perk unlocked            |
-| `daemon_turret_shutdown.png`       | ![turret_shutdown](media/template_examples/daemon_turret_shutdown.png)             | Perk unlocked            |
-| `daemon_optics_jammer.png`         | ![optics_jammer](media/template_examples/daemon_optics_jammer.png)                 | Legendary: Reboot Optics |
-| `daemon_weapons_jammer.png`        | ![weapons_jammer](media/template_examples/daemon_weapons_jammer.png)               | Legendary: Weapon Glitch |
-| `daemon_datamine_copy_malware.png` | ![datamine_copy_malware](media/template_examples/daemon_datamine_copy_malware.png) | Quest: The Pickup        |
-| `daemon_neutralize_malware.png`    | ![neutralize_malware](media/template_examples/daemon_neutralize_malware.png)       | Quest: The Pickup        |
-| `daemon_gain_access.png`           | ![gain_access](media/template_examples/daemon_gain_access.png)                     | Quest: Space Oddity      |
+| Filename                             | Image                                                                                  | Daemon type              |
+| ------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------ |
+| `daemon_datamine_v1.png`             | ![datamine_v1](media/template_examples/daemon_datamine_v1.png)                         | Common                   |
+| `daemon_datamine_v2.png`             | ![datamine_v2](media/template_examples/daemon_datamine_v2.png)                         | Common                   |
+| `daemon_datamine_v3.png`             | ![datamine_v3](media/template_examples/daemon_datamine_v3.png)                         | Common                   |
+| `daemon_icepick.png`                 | ![icepick](media/template_examples/daemon_icepick.png)                                 | Common                   |
+| `daemon_mass_vulnerability.png`      | ![mass_vulnerability](media/template_examples/daemon_mass_vulnerability.png)           | Perk unlocked            |
+| `daemon_camera_shutdown.png`         | ![camera_shutdown](media/template_examples/daemon_camera_shutdown.png)                 | Perk unlocked            |
+| `daemon_friendly_turrets.png`        | ![friendly_turrets](media/template_examples/daemon_friendly_turrets.png)               | Perk unlocked            |
+| `daemon_turret_shutdown.png`         | ![turret_shutdown](media/template_examples/daemon_turret_shutdown.png)                 | Perk unlocked            |
+| `daemon_optics_jammer.png`           | ![optics_jammer](media/template_examples/daemon_optics_jammer.png)                     | Legendary: Reboot Optics |
+| `daemon_weapons_jammer.png`          | ![weapons_jammer](media/template_examples/daemon_weapons_jammer.png)                   | Legendary: Weapon Glitch |
+| `daemon_datamine_copy_malware.png`   | ![datamine_copy_malware](media/template_examples/daemon_datamine_copy_malware.png)     | Quest: The Pickup        |
+| `daemon_neutralize_malware.png`      | ![neutralize_malware](media/template_examples/daemon_neutralize_malware.png)           | Quest: The Pickup        |
+| `daemon_gain_access.png`             | ![gain_access](media/template_examples/daemon_gain_access.png)                         | Quest: Space Oddity      |
+| `daemon_datamine_crafting_specs.png` | ![datamine_crafting_specs](media/template_examples/daemon_datamine_crafting_specs.png) | Quest: Spellbound        |
 
 *[Legendary: Reboot Optics]: Obtainable via crafting (may require an edited save file or mods)
 *[Legendary: Weapon Glitch]: Obtainable via crafting
 *[Quest: The Pickup]: Seen when hacking the datashard from Meredith Stout
 *[Quest: Space Oddity]: Seen when hacking the briefcase at the start of the mission
+*[Quest: Spellbound]: Seen when hacking the Book of Spells when picked up by R3n0
+
+!!! note
+    When screenshotting daemons, take note of the gap size between daemon names and codes.
+    If the gap size is larger or smaller than the default (70-71 pixels),
+    it must be specified in the `meta.json` file with a `daemons_gap_size` key as a float.
+
+    For example, the daemons gap size for Simplified Chinese is 62 pixels:
+    ![daemons_gap_size](media/languages_04_daemons_gap_size.png)
+
+    See the example `meta.json` file for Simplified Chinese below for more.
 
 #### Codes
 
@@ -209,7 +224,8 @@ mandatory, but should be provided if possible. For example:
             "weapons_jammer": "WEAPONS JAMMER",
             "datamine_copy_malware": "DATAMINE: COPY MALWARE",
             "neutralize_malware": "NEUTRALIZE MALWARE",
-            "gain_access": "GAIN ACCESS"
+            "gain_access": "GAIN ACCESS",
+            "datamine_crafting_specs": "DATAMINE: CRAFTING SPECS"
         }
     }
     ```
@@ -218,6 +234,7 @@ mandatory, but should be provided if possible. For example:
     ```json
     {
         "name": "简体中文",
+        "daemons_gap_size": 62.0,
         "daemons": {
             "datamine_v1": "数据挖掘_V1",
             "datamine_v2": "数据挖掘_V2",

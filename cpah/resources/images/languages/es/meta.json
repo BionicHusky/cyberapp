@@ -8,6 +8,8 @@
         "mass_vulnerability": "VULNERABILIDAD MASIVA",
         "turret_shutdown": "APAGADO DE TORRETA",
         "friendly_turrets": "TORRETAS ALIADAS",
-		"camera_shutdown": "APAGADO DE CÁMARA"
+		"camera_shutdown": "APAGADO DE CÁMARA",
+        "weapons_jammer": "INHIBIDOR DE ARMAS",
+		"optics_jammer": "INHIBIDOR DE ÓPTICAS"
     }
 }
