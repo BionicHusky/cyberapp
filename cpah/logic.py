@@ -6,6 +6,7 @@ import time
 
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
+import ahk  # type: ignore
 import cv2  # type: ignore
 import numpy  # type: ignore
 import pyautogui  # type: ignore
@@ -34,6 +35,19 @@ def _migrate_config(data: Dict) -> Dict:
         data["daemon_priorities"] = list()
         data["autohack_activation_key"] = "f"
         config_version = data["schema_version"] = 2
+
+    if config_version == 2:
+        LOG.debug("Converting config format from version 2 to version 3")
+        data["autohack_key_bindings"] = models.AutohackKeyBindings(
+            activation=data.pop("autohack_activation_key")
+        )
+        data["ahk_autohack_key_bindings"] = models.BaseAutohackKeyBindings()
+        data["window_title"] = constants.GAME_EXECUTABLE_TITLE
+        data["ahk_enabled"] = False
+        data["ahk_executable"] = ""
+        data["sequential_hotkey_actions"] = False
+        data["sequential_hotkey_actions_timeout"] = 5000
+        config_version = data["schema_version"] = 3
 
     ## NOTE Add more conditionals when more schema versions are added
     ## Remember constants.CONFIG_SCHEMA_VERSION needs to be modified
@@ -230,7 +244,7 @@ def generate_buffer_sequence_image(
 def _focus_game_window(config: models.Config) -> int:
     """Helper function to focus the game window."""
     LOG.debug("Bringing CP2077 to the foreground")
-    hwnd = win32gui.FindWindow(None, constants.GAME_EXECUTABLE_TITLE)
+    hwnd = win32gui.FindWindow(None, config.window_title)
     if hwnd == win32gui.GetForegroundWindow():
         LOG.debug("Game window already active")
         return hwnd
@@ -899,6 +913,23 @@ def calculate_sequence_path_data(
     return sequence_path_data
 
 
+def _get_ahk_client(config: models.Config) -> ahk.AHK:
+    """Helper that gets the AHK client and checks for errors."""
+    client_kwargs = dict()
+    if config.ahk_executable:
+        client_kwargs["executable_path"] = config.ahk_executable
+    try:
+        client = ahk.AHK(**client_kwargs)
+    except ahk.script.ExecutableNotFoundError:
+        raise exceptions.CPAHAHKNotFoundException()
+    LOG.debug("Testing AHK client...")
+    try:
+        client.mouse_position
+    except Exception as err:
+        raise exceptions.CPAHAHKInternalException(str(err))
+    return client
+
+
 def autohack(
     config: models.Config,
     breach_protocol_data: models.BreachProtocolData,
@@ -906,12 +937,23 @@ def autohack(
     sequence_path_data: models.SequencePathData,
 ):
     """Clicks the sequence solution in the game window."""
+    kb: models.BaseAutohackKeyBindings
+    if config.ahk_enabled:
+        ahk_client = _get_ahk_client(config)
+        kb = config.ahk_autohack_key_bindings
+        input_function = ahk_client.key_press
+    else:
+        kb = config.autohack_key_bindings
+        input_function = pyautogui.press
+
     _focus_game_window(config)
+
+    key_names = ((kb.left, kb.right), (kb.up, kb.down))
     in_row = True
     key_sequence: List[str] = list()
     cursor_position = (0, 0)
-    key_names = (("left", "right"), ("up", "down"))
     shortest_solution_path: Tuple[Tuple[int, int], ...] = sequence_path_data.shortest_solution_path  # type: ignore
+
     for path_index, coordinate in enumerate(shortest_solution_path):
         dimension_index = 0 if in_row else 1
         delta = coordinate[dimension_index] - cursor_position[dimension_index]
@@ -926,13 +968,15 @@ def autohack(
                     check = (cursor_position[0], cursor_position[1] + it)
                 if check not in shortest_solution_path[:path_index]:
                     key_sequence.append(key)
+
         in_row = not in_row
         cursor_position = coordinate
-        key_sequence.append(config.autohack_activation_key)
+        key_sequence.append(kb.activation)
+
     LOG.debug(f"Autohacker built key sequence: {key_sequence}")
-    pyautogui.press("right")
+    input_function(kb.right)
     time.sleep(0.05)
-    pyautogui.press("left")
+    input_function(kb.left)
     time.sleep(0.05)
     for key in key_sequence:
-        pyautogui.press(key)
+        input_function(key)

@@ -24,11 +24,11 @@ class CPAHInvalidConfigException(CPAHException):
 
 
 class CPAHInvalidNewConfigException(CPAHException):
-    def __init__(self, exception: ValueError):
+    def __init__(self, exception: Exception):
         super().__init__(f"The configuration is not valid:\n\n{exception}")
 
 
-class CPAHHotkeyRegistrationExceptions(CPAHException):
+class CPAHHotkeyRegistrationException(CPAHException):
     def __init__(self, exception: system_hotkey.SystemRegisterError):
         super().__init__(
             "The analysis hotkey could not be registered. "
@@ -95,3 +95,23 @@ class CPAHSequenceParseFailedException(CPAHDataParseFailedException):
 class CPAHDaemonParseFailedException(CPAHDataParseFailedException):
     def __init__(self, message: str):
         super().__init__(message, detection_type="daemon")
+
+
+class CPAHAHKException(CPAHException):
+    pass
+
+
+class CPAHAHKNotFoundException(CPAHAHKException):
+    def __init__(self):
+        super().__init__(
+            "AutoHotkey support is enabled, but AutoHotkey.exe was not found"
+        )
+
+
+class CPAHAHKInternalException(CPAHAHKException):
+    def __init__(self, message: str):
+        super().__init__(
+            "The AutoHotkey executable encountered an error. "
+            "Check to make sure the AutoHotkey.exe executable path is correct:"
+            f"\n\n{message}"
+        )

@@ -1,8 +1,9 @@
 import dataclasses
 import traceback
 
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
+import ahk  # type: ignore
 import numpy  # type: ignore
 import pyautogui  # type: ignore
 import pydantic
@@ -11,6 +12,31 @@ import system_hotkey  # type: ignore
 from . import constants
 from . import exceptions
 from .logger import LOG
+
+
+class BaseAutohackKeyBindings(pydantic.BaseModel):
+    activation: str = pydantic.Field("f", description="UI activation (use) key")
+    up: str = pydantic.Field("Up", description="UI menu up key")
+    down: str = pydantic.Field("Down", description="UI menu down key")
+    left: str = pydantic.Field("Left", description="UI menu left key")
+    right: str = pydantic.Field("Right", description="UI menu right key")
+
+
+class AutohackKeyBindings(BaseAutohackKeyBindings):
+    activation: str = pydantic.Field("f", description="UI activation (use) key")
+    up: str = pydantic.Field("up", description="UI menu up key")
+    down: str = pydantic.Field("down", description="UI menu down key")
+    left: str = pydantic.Field("left", description="UI menu left key")
+    right: str = pydantic.Field("right", description="UI menu right key")
+
+    @pydantic.validator("*")
+    def key_validator(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Key must be defined")
+        if value not in pyautogui.KEY_NAMES:
+            raise ValueError(f"{value} is not a valid key")
+        return value
 
 
 class Config(pydantic.BaseSettings):
@@ -80,14 +106,38 @@ class Config(pydantic.BaseSettings):
     daemon_priorities: List[constants.Daemon] = pydantic.Field(
         list(), description="Daemons to always keep during a forced autohack"
     )
-    autohack_activation_key: str = pydantic.Field(
-        "f", description="Key to press for autohacking activations"
+    autohack_key_bindings: AutohackKeyBindings = pydantic.Field(
+        AutohackKeyBindings(), description="Key bindings for standard autohacking"
     )
     autohack_keypress_delay: int = pydantic.Field(
         17,
-        description="Milisecond delay between keypresses during the autohack",
+        description="Millisecond delay between keypresses during the autohack",
         ge=10,
         le=100,
+    )
+    window_title: str = pydantic.Field(
+        constants.GAME_EXECUTABLE_TITLE,
+        description="Window title to focus",
+        min_length=1,
+    )
+    ahk_enabled: bool = pydantic.Field(
+        False, description="Use AutoHotkey for autohacking"
+    )
+    ahk_executable: str = pydantic.Field(
+        "", description="AutoHotkey.exe executable location"
+    )
+    ahk_autohack_key_bindings: BaseAutohackKeyBindings = pydantic.Field(
+        BaseAutohackKeyBindings(),
+        description="Key bindings for AutoHotkey assisted autohacking",
+    )
+    sequential_hotkey_actions: bool = pydantic.Field(
+        False, description="Enable sequential hotkey actions"
+    )
+    sequential_hotkey_actions_timeout: int = pydantic.Field(
+        5000,
+        description="Millisecond timeout for next hotkey action",
+        ge=1000,
+        le=30000,
     )
 
     @pydantic.validator("analysis_hotkey")
@@ -112,14 +162,6 @@ class Config(pydantic.BaseSettings):
     def detection_language_validator(cls, value: str) -> str:
         if value not in constants.TEMPLATE_LANGUAGE_DATA:
             raise ValueError(f"Detection language {value} is not supported")
-        return value
-
-    @pydantic.validator("autohack_activation_key")
-    def autohack_activation_key_validator(cls, value: str) -> str:
-        if not value:
-            raise ValueError("Key must be defined")
-        if value not in pyautogui.KEY_NAMES:
-            raise ValueError(f"{value} is not a valid key")
         return value
 
 

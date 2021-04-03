@@ -3,6 +3,7 @@ import functools
 import os
 import pathlib
 import sys
+import time
 import types
 import winsound
 
@@ -96,6 +97,16 @@ def _beep_sequence(config: models.Config, frequencies: Iterable[int]):
             winsound.Beep(frequency, constants.BEEP_DURATION)
 
 
+class SHATimeoutWorker(Worker):
+    """
+    A worker that simply waits the given amount of time.
+    Used for sequential hotkey action timeout checking.
+    """
+
+    def run(self, duration: float):  # type: ignore
+        time.sleep(duration)
+
+
 class SolverWorker(Worker):
 
     matrix_overlay_image_signal = Signal(Image.Image)
@@ -103,18 +114,23 @@ class SolverWorker(Worker):
     solution_signal = Signal(models.SequencePathData)
     sequence_selection_signal = Signal(tuple)
     sequence_path_data_available_signal = Signal(models.SequencePathData)
+    solver_finished_signal = Signal(bool)
 
     def run(  # type: ignore
         self,
         config: models.Config,
         breach_protocol_data: models.BreachProtocolData,
         selected_sequence_indices: Tuple[int],
+        force_solve: bool = False,
+        hotkey: bool = False,
     ):
         self._solve_and_signal(
             config,
             breach_protocol_data,
             selected_sequence_indices=selected_sequence_indices,
+            force_solve=force_solve,
         )
+        self.solver_finished_signal.emit(hotkey)  # type: ignore
 
     def _solve_and_signal(
         self,
@@ -133,6 +149,7 @@ class SolverWorker(Worker):
                 sequence_path_data,
                 selected_sequence_indices,
             ) = logic.force_calculate_sequence_path_data(config, breach_protocol_data)
+            beep = config.enable_beeps
         else:
             if selected_sequence_indices is None:
                 selected_sequence_indices = tuple(
@@ -165,12 +182,19 @@ class SolverWorker(Worker):
             self.sequence_path_data_available_signal.emit(sequence_path_data)  # type: ignore
         self.solution_signal.emit(sequence_path_data)  # type: ignore
         if beep:
-            beep_tone = (
-                constants.BEEP_SUCCESS
-                if sequence_path_data.solution_valid
-                else constants.BEEP_FAIL
-            )
-            _beep_sequence(config, [constants.BEEP_START, beep_tone])
+            beep_tones = [constants.BEEP_START]
+            if force_solve:
+                base_beeps = [constants.BEEP_FAIL] * len(breach_protocol_data.daemons)
+                for selected_index in selected_sequence_indices:
+                    base_beeps[selected_index] = constants.BEEP_SUCCESS
+                beep_tones.extend(base_beeps)
+            else:
+                beep_tones.append(
+                    constants.BEEP_SUCCESS
+                    if sequence_path_data.solution_valid
+                    else constants.BEEP_FAIL
+                )
+            _beep_sequence(config, beep_tones)
         return sequence_path_data
 
 
@@ -181,12 +205,13 @@ class AnalysisWorker(SolverWorker):
     sequences_signal = Signal(tuple)
     analysis_data_available_signal = Signal(models.BreachProtocolData)
     run_autohack_signal = Signal()
-    analysis_finished_signal = Signal(bool)
+    analysis_finished_signal = Signal(bool, bool)
 
     def run(  # type: ignore
         self,
         config: models.Config,
         from_file: Optional[pathlib.Path] = None,
+        hotkey: bool = False,
     ):
         self.status.emit("SCREEN")  # type: ignore
         screenshot_data = logic.grab_screenshot(config, from_file=from_file)
@@ -251,7 +276,7 @@ class AnalysisWorker(SolverWorker):
         )
         if run_autohack:
             self.run_autohack_signal.emit()  # type: ignore
-        self.analysis_finished_signal.emit(run_autohack)  # type: ignore
+        self.analysis_finished_signal.emit(run_autohack, hotkey)  # type: ignore
 
 
 class AutohackWorker(Worker):
@@ -344,7 +369,8 @@ class CPAH(ErrorHandlerMixin, QWidget):
         ## Internal
         self.autohack_warning_box = QMessageBox()
         self.screenshot_picker_dialog = QFileDialog()
-        self._threads: Dict[str, ThreadContainer] = dict()
+        self._recycled_threads: Dict[str, ThreadContainer] = dict()
+        self._temp_threads: List[ThreadContainer] = list()
         self.hotkey = system_hotkey.SystemHotkey()
 
         def _error_handle_wrap_hotkey(method):
@@ -354,7 +380,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
                 except system_hotkey.SystemRegisterError as exception:
                     self._error_handler_signal.emit(
                         models.Error(
-                            exceptions.CPAHHotkeyRegistrationExceptions(exception)
+                            exceptions.CPAHHotkeyRegistrationException(exception)
                         ),
                         self,
                     )
@@ -368,6 +394,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
         self.analyzing = False
         self.autohacking = False
         self.configuration_screen_open = False
+        self.hotkey_action_timeout = 0.0
 
         ## Cache
         self.analysis_data: models.AnalysisData = None
@@ -379,10 +406,10 @@ class CPAH(ErrorHandlerMixin, QWidget):
 
     @ErrorHandlerMixin.ignore
     def _set_up_worker(
-        self, name: str, worker: Type[Worker]
+        self, name: str, worker: Type[Worker], recycle: bool = True
     ) -> Tuple[Callable, ThreadContainer]:
         """Convenience function for setting up a worker thread."""
-        thread_container = self._threads.get(name)
+        thread_container = self._recycled_threads.get(name)
         if thread_container:
             try:
                 if thread_container.thread.isRunning():
@@ -390,7 +417,20 @@ class CPAH(ErrorHandlerMixin, QWidget):
             except RuntimeError:  ## Thread already deleted
                 pass
 
-        self._threads[name] = thread_container = ThreadContainer(QThread(), worker())
+        thread_container = ThreadContainer(QThread(), worker())
+        if recycle:
+            self._recycled_threads[name] = thread_container
+        else:
+            to_remove: List[int] = list()
+            for index, temp_container in enumerate(self._temp_threads):
+                try:
+                    if not temp_container.thread.isRunning():
+                        to_remove.append(index)
+                except RuntimeError:
+                    to_remove.append(index)
+            for it in to_remove[::-1]:
+                del self._temp_threads[it]
+            self._temp_threads.append(thread_container)
         thread_container.worker.moveToThread(thread_container.thread)
         thread_container.thread.started.connect(thread_container.worker.wrapped_run)
         thread_container.thread.finished.connect(thread_container.thread.deleteLater)
@@ -438,7 +478,29 @@ class CPAH(ErrorHandlerMixin, QWidget):
             LOG.debug(f"User selected screenshot: {selected_file}")
             self.start_analysis(from_file=pathlib.Path(selected_file))
 
-    def start_analysis(self, from_file: Optional[pathlib.Path] = None):
+    def analysis_hotkey_pressed(self):
+        LOG.debug("analysis_hotkey_pressed")
+        if (
+            self.config.sequential_hotkey_actions
+            and not self.config.auto_autohack
+            and self.hotkey_action_timeout
+            and time.time() < self.hotkey_action_timeout
+            and self.sequence_path_data
+        ):
+            if self.sequence_path_data.solution_valid:
+                LOG.debug("Sequential hotkey action: autohack")
+                self.hotkey_action_timeout = 0.0
+                self.sequential_hotkey_action_timeout_checker()
+                self.start_autohack()
+            else:
+                LOG.debug("Sequential hotkey action: deselect daemons")
+                self.recalculate_solution(force_solve=True, hotkey=True)
+        else:
+            self.start_analysis(hotkey=True)
+
+    def start_analysis(
+        self, from_file: Optional[pathlib.Path] = None, hotkey: bool = False
+    ):
         LOG.debug("start_analysis")
         if self.configuration_screen_open:
             LOG.debug("Ignoring analysis start because the config screen is open.")
@@ -493,12 +555,46 @@ class CPAH(ErrorHandlerMixin, QWidget):
             self.cache_sequence_path_data
         )
         thread_container.worker.run_autohack_signal.connect(self.start_autohack)
-        start_worker(self.config, from_file=from_file)
+        start_worker(self.config, from_file=from_file, hotkey=hotkey)
 
-    def analysis_finished(self, autohacking: bool = False):
+    def analysis_finished(self, autohacking: bool = False, hotkey_action: bool = False):
         LOG.debug("analysis_finished")
+        if hotkey_action:
+            self.hotkey_action_timeout = (
+                time.time() + self.config.sequential_hotkey_actions_timeout / 1000
+            )
+            self.sequential_hotkey_action_timeout_checker()
         self.analyzing = False
         self.analyze_button.setEnabled(not autohacking)
+        self._reset_analyze_button_text()
+
+    def sequential_hotkey_action_timeout_checker(self):
+        """
+        An uncreatively named helper function for checking if the
+        sequential hotkey action has timed out.
+        """
+        LOG.debug("sequential_hotkey_action_timeout_checker")
+        if (
+            not self.config.auto_autohack
+            and self.config.sequential_hotkey_actions
+            and self.hotkey_action_timeout
+        ):
+            remaining_time = self.hotkey_action_timeout - time.time()
+            if remaining_time <= 0:
+                self.hotkey_action_timeout = 0.0
+                self._reset_analyze_button_text()
+                _beep_sequence(self.config, [constants.BEEP_FAIL] * 2)
+            else:
+                start_worker, thread_container = self._set_up_worker(
+                    "sha_timeout", SHATimeoutWorker, recycle=False
+                )
+                thread_container.worker.finished.connect(
+                    self.sequential_hotkey_action_timeout_checker
+                )
+                start_worker(remaining_time)
+                LOG.debug(f"Starting SHATimeoutWorker with duration: {remaining_time}")
+        else:
+            self.hotkey_action_timeout = 0.0
         self._reset_analyze_button_text()
 
     def show_analyzing_status(self, status: str):
@@ -585,14 +681,15 @@ class CPAH(ErrorHandlerMixin, QWidget):
 
     def show_solution(self, sequence_path_data: models.SequencePathData):
         LOG.debug("show_solution")
+        self.cache_sequence_path_data(sequence_path_data)
         if sequence_path_data.solution_valid:
             self.autohack_button.setEnabled(True)
         else:
             self.autohack_button.setEnabled(False)
             self.show_buffer_error_message(sequence_path_data)
 
-    def recalculate_solution(self):
-        LOG.debug("recalculate_solution")
+    def recalculate_solution(self, force_solve: bool = False, hotkey: bool = False):
+        LOG.debug(f"recalculate_solution (force_solve={force_solve})")
         try:
             start_worker, thread_container = self._set_up_worker("solver", SolverWorker)
         except exceptions.CPAHThreadRunningException:
@@ -612,6 +709,9 @@ class CPAH(ErrorHandlerMixin, QWidget):
         thread_container.worker.sequence_path_data_available_signal.connect(
             self.cache_sequence_path_data
         )
+        thread_container.worker.solver_finished_signal.connect(
+            self.recalculate_solution_finished
+        )
 
         enabled_selections = list()
         for index, sequence_selection in enumerate(self.sequence_container.sequences):
@@ -628,7 +728,17 @@ class CPAH(ErrorHandlerMixin, QWidget):
                 self.config,
                 self.analysis_data.breach_protocol_data,
                 tuple(enabled_selections),
+                force_solve=force_solve,
+                hotkey=hotkey,
             )
+
+    def recalculate_solution_finished(self, hotkey_action: bool):
+        LOG.debug("recalculate_solution_finished")
+        if hotkey_action:
+            self.hotkey_action_timeout = (
+                time.time() + self.config.sequential_hotkey_actions_timeout / 1000
+            )
+            self.sequential_hotkey_action_timeout_checker()
 
     def _convert_and_set_image(self, image: Image.Image, label: QLabel):
         """Helper function to convert an image and set it on the label."""
@@ -703,6 +813,13 @@ class CPAH(ErrorHandlerMixin, QWidget):
         text = "ANALYZE"
         if self.config.auto_autohack:
             text += " + AUTOHACK"
+        elif (
+            self.config.sequential_hotkey_actions
+            and self.hotkey_action_timeout
+            and time.time() < self.hotkey_action_timeout
+        ):
+            text += "  (HOTKEY -> AUTOHACK)"
+
         self.analyze_button.setText(text)
 
     def reset_displays(self):
@@ -722,7 +839,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
         """Loads the config file and sets the system-wide autohack hotkey."""
         LOG.debug("Bootstrapping application")
         self.config = logic.load_config()
-        self.analysis_hotkey_signal.connect(self.start_analysis)
+        self.analysis_hotkey_signal.connect(self.analysis_hotkey_pressed)
         self.configuration_changed(reset_displays=False)
 
     def load_ui(self):
@@ -935,15 +1052,49 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
         self.activation_key_line_edit = self.findChild(
             QLineEdit, "activationKeyLineEdit"
         )
+        self.up_key_line_edit = self.findChild(QLineEdit, "upKeyLineEdit")
+        self.down_key_line_edit = self.findChild(QLineEdit, "downKeyLineEdit")
+        self.left_key_line_edit = self.findChild(QLineEdit, "leftKeyLineEdit")
+        self.right_key_line_edit = self.findChild(QLineEdit, "rightKeyLineEdit")
         self.autohack_keypress_delay_spin_box = self.findChild(
             QSpinBox, "autohackKeypressDelaySpinBox"
         )
 
+        ## Advanced settings
+        self.window_title_line_edit = self.findChild(QLineEdit, "windowTitleLineEdit")
+        self.ahk_check_box = self.findChild(QCheckBox, "ahkCheckBox")
+        self.ahk_executable_line_edit = self.findChild(
+            QLineEdit, "ahkExecutableLineEdit"
+        )
+        self.ahk_executable_browse_button = self.findChild(
+            QPushButton, "ahkExecutableBrowseButton"
+        )
+        self.ahk_activation_key_line_edit = self.findChild(
+            QLineEdit, "ahkActivationKeyLineEdit"
+        )
+        self.ahk_up_key_line_edit = self.findChild(QLineEdit, "ahkUpKeyLineEdit")
+        self.ahk_down_key_line_edit = self.findChild(QLineEdit, "ahkDownKeyLineEdit")
+        self.ahk_left_key_line_edit = self.findChild(QLineEdit, "ahkLeftKeyLineEdit")
+        self.ahk_right_key_line_edit = self.findChild(QLineEdit, "ahkRightKeyLineEdit")
+        self.sha_check_box = self.findChild(QCheckBox, "shaCheckBox")
+        self.sha_timeout_spin_box = self.findChild(QSpinBox, "shaTimeoutSpinBox")
+
         ## Connect buttons
+        self.ahk_executable_browse_button.clicked.connect(
+            self.open_ahk_executable_file_picker
+        )
         self.ok_button = self.findChild(QPushButton, "okButton")
         self.ok_button.clicked.connect(lambda: self.close(save=True))
         self.cancel_button = self.findChild(QPushButton, "cancelButton")
         self.cancel_button.clicked.connect(self.close)
+
+    def open_ahk_executable_file_picker(self):
+        result = QFileDialog.getOpenFileName(
+            self, caption="Select AutoHotkey.exe", filter="Executable Files (*.exe)"
+        )
+        LOG.debug(f"File picker selected ahk executable: {result}")
+        if result and result[0]:
+            self.ahk_executable_line_edit.setText(result[0])
 
     def show(self):
         self.fill_values()
@@ -978,8 +1129,23 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
         self.force_autohack_check_box.setChecked(config.force_autohack)
         for daemon_enum, keep_daemon in self.keep_daemons.items():
             keep_daemon.setChecked(daemon_enum in config.daemon_priorities)
-        self.activation_key_line_edit.setText(config.autohack_activation_key)
+        key_names = ("activation", "up", "down", "left", "right")
+        for key_name in key_names:
+            getattr(self, f"{key_name}_key_line_edit").setText(
+                getattr(config.autohack_key_bindings, key_name)
+            )
         self.autohack_keypress_delay_spin_box.setValue(config.autohack_keypress_delay)
+
+        ## Advanced settings
+        self.window_title_line_edit.setText(config.window_title)
+        self.ahk_check_box.setChecked(config.ahk_enabled)
+        self.ahk_executable_line_edit.setText(config.ahk_executable)
+        for key_name in key_names:
+            getattr(self, f"ahk_{key_name}_key_line_edit").setText(
+                getattr(config.ahk_autohack_key_bindings, key_name)
+            )
+        self.sha_check_box.setChecked(config.sequential_hotkey_actions)
+        self.sha_timeout_spin_box.setValue(config.sequential_hotkey_actions_timeout)
 
     def showEvent(self, event: QShowEvent):
         self.configuration_screen_open_signal.emit(True)  # type: ignore
@@ -992,8 +1158,10 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
 
     def close(self, save: bool = False):
         LOG.debug(f"Closing configuration window (save={save})")
+
         if save:
             test = self.parent_widget.config.copy(deep=True)
+
             ## Interface settings
             test.auto_autohack = self.automatic_autohacking_check_box.isChecked()
             test.enable_beeps = self.beep_notifications_check_box.isChecked()
@@ -1004,6 +1172,7 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
                 hotkeys = list()
             test.analysis_hotkey = hotkeys
             test.game_focus_delay = self.focus_delay_spin_box.value()
+
             ## Detection settings
             test.buffer_size_override = self.buffer_size_override_spin_box.value()
             test.core_detection_threshold = self.core_text_spin_box.value()
@@ -1015,22 +1184,43 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
             test.daemon_detection_threshold = self.daemon_names_spin_box.value()
             selected_language = self.detection_language_combo_box.currentText()
             test.detection_language = selected_language
+
             ## Autohack settings
             test.force_autohack = self.force_autohack_check_box.isChecked()
             test.daemon_priorities = [
                 k for k, v in self.keep_daemons.items() if v.isChecked()
             ]
-            test.autohack_activation_key = (
-                self.activation_key_line_edit.text().lower().strip()
-            )
+            key_names = ("activation", "up", "down", "left", "right")
+            for key_name in key_names:
+                key_value = getattr(self, f"{key_name}_key_line_edit")
+                key_value = key_value.text().lower().strip()
+                setattr(test.autohack_key_bindings, key_name, key_value)
             test.autohack_keypress_delay = self.autohack_keypress_delay_spin_box.value()
+
+            ## Advanced settings
+            test.ahk_enabled = self.ahk_check_box.isChecked()
+            test.ahk_executable = self.ahk_executable_line_edit.text().strip()
+            test.window_title = self.window_title_line_edit.text().strip()
+            for key_name in key_names:
+                key_value = getattr(self, f"ahk_{key_name}_key_line_edit")
+                key_value = key_value.text().strip()
+                setattr(test.ahk_autohack_key_bindings, key_name, key_value)
+            test.sequential_hotkey_actions = self.sha_check_box.isChecked()
+            test.sequential_hotkey_actions_timeout = self.sha_timeout_spin_box.value()
+
+            test_dict = test.dict()
+            LOG.debug(f"Testing validity of config: {test_dict}")
             try:
-                test.validate(test.dict())
-            except ValueError as exception:
+                test.validate(test_dict)
+                if test.ahk_enabled:
+                    logic._get_ahk_client(test)
+            except (ValueError, exceptions.CPAHAHKException) as exception:
                 raise exceptions.CPAHInvalidNewConfigException(exception)
+
             self.parent_widget.config = test
             logic.save_config(self.parent_widget.config)
             self.configuration_changed_signal.emit()  # type: ignore
+
         self.hide()
 
 
