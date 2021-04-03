@@ -8,6 +8,8 @@
         "mass_vulnerability": "VULNÉRABILITÉ DE MASSE",
         "turret_shutdown": "ARRÊT DE LA TOURELLE",
         "friendly_turrets": "TOURELLES ALLIÉES",
-		"camera_shutdown": "ARRÊT DE LA CAMÉRA"
+		"camera_shutdown": "ARRÊT DE LA CAMÉRA",
+        "weapons_jammer": "BROUILLEUR D'ARMES",
+		"optics_jammer": "BROUILLEUR D'OPTIQUES"
     }
 }

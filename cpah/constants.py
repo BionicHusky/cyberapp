@@ -38,7 +38,7 @@ _version_file = MODULE_DIRECTORY / "VERSION"
 
 ## General application constants
 APPLICATION_NAME = "cp2077_autohack"
-CONFIG_SCHEMA_VERSION = 2
+CONFIG_SCHEMA_VERSION = 3
 VERSION = (
     _version_file.read_text().strip() if _version_file.is_file() else "development"
 )
@@ -46,7 +46,7 @@ MAX_SOLUTION_PATH_LENGTH = 12
 MAX_SIZE_ESTIMATE_THRESHOLD = 3500
 MEMOIZE_SIZE = 100
 
-## Title used to find the process to screenshot
+## Default window title used to find the process to screenshot
 GAME_EXECUTABLE_TITLE = "Cyberpunk 2077 (C) 2020 by CD Projekt RED"
 
 ## Directory constants
@@ -97,6 +97,7 @@ class Daemon(str, enum.Enum):
     DATAMINE_COPY_MALWARE = "datamine_copy_malware"
     NEUTRALIZE_MALWARE = "neutralize_malware"
     GAIN_ACCESS = "gain_access"
+    DATAMINE_CRAFTING_SPECS = "datamine_crafting_specs"
 
 
 DATAMINE_DAEMONS = {
@@ -133,92 +134,6 @@ for _language_directory in (IMAGES_DIRECTORY / "languages").iterdir():
     _metadata["directory"] = _language_directory
     TEMPLATE_LANGUAGE_DATA[_metadata["name"]] = _metadata
 
-
-class Templates:
-    def __init__(self):
-        self._language: Optional[str] = None
-
-        ## Language agnostic: buffer boxes
-        self.buffer_box = _rt(IMAGES_DIRECTORY / "buffer_box.png")
-
-        ## Sometimes language agnostic: codes
-        self._codes: Tuple[numpy.ndarray, ...] = tuple()
-        self.default_codes: Tuple[numpy.ndarray, ...] = tuple(
-            _rt(IMAGES_DIRECTORY / f"code_{it}.png") for it in range(len(CODE_NAMES))
-        )
-        self._small_codes: Tuple[numpy.ndarray, ...] = tuple()
-        self.default_small_codes: Tuple[numpy.ndarray, ...] = tuple(
-            _rt(IMAGES_DIRECTORY / f"code_{it}_small.png")
-            for it in range(len(CODE_NAMES))
-        )
-
-        ## Language dependent: titles and daemons
-        self._daemon_names: Dict[Daemon, str] = dict()
-        self._daemons: Dict[Daemon, numpy.ndarray] = dict()
-        self._titles: Dict[Title, numpy.ndarray] = dict()
-
-    def requires_language(method):
-        def _decorated(self, *args, **kwargs):
-            if not self._language:
-                raise ValueError(
-                    f"Templates.{method.__name__} requires a loaded language"
-                )
-            return method(self, *args, **kwargs)
-
-        return _decorated
-
-    def load_language(self, language: str):
-        data = TEMPLATE_LANGUAGE_DATA[language]
-        directory = data["directory"]
-
-        if (directory / "code_0.png").exists():
-            code_range = range(len(CODE_NAMES))
-            self._codes = tuple(_rt(directory / f"code_{it}.png") for it in code_range)
-            self._small_codes = tuple(
-                _rt(directory / f"code_{it}_small.png") for it in code_range
-            )
-        else:
-            self._codes = self.default_codes
-            self._small_codes = self.default_small_codes
-
-        self._daemon_names = {Daemon(k): v for k, v in data["daemons"].items()}
-        self._daemons = dict()
-        for daemon in Daemon:
-            daemon_image_file = directory / f"daemon_{daemon.value}.png"
-            if daemon_image_file.exists():
-                self._daemons[daemon] = _rt(daemon_image_file)
-
-        self._titles = {it: _rt(directory / f"title_{it.value}.png") for it in Title}
-        self._language = language
-
-    @property  # type: ignore
-    @requires_language
-    def codes(self):
-        return self._codes
-
-    @property  # type: ignore
-    @requires_language
-    def small_codes(self):
-        return self._small_codes
-
-    @property  # type: ignore
-    @requires_language
-    def daemon_names(self):
-        return self._daemon_names
-
-    @property  # type: ignore
-    @requires_language
-    def daemons(self):
-        return self._daemons
-
-    @property  # type: ignore
-    @requires_language
-    def titles(self):
-        return self._titles
-
-
-CV_TEMPLATES = Templates()
-
 ## Opencv data parsing constants
 ANALYSIS_IMAGE_SIZE = (1920, 1080)
 ANALYSIS_IMAGE_RATIO = ANALYSIS_IMAGE_SIZE[0] / ANALYSIS_IMAGE_SIZE[1]
@@ -234,7 +149,7 @@ MOUSE_MOVE_DELAY = 0.01
 MOUSE_CLICK_DELAY = 0.01
 
 ## Matrix constants
-VALID_MATRIX_SIZES = tuple(range(5, 9))
+VALID_MATRIX_SIZES = tuple(range(4, 9))
 MATRIX_IMAGE_FONT_COLOR = (208, 236, 88, 255)
 MATRIX_IMAGE_FONT_SIZE = 30
 MATRIX_IMAGE_FONT = ImageFont.truetype(str(SEMIBOLD_FONT_PATH), MATRIX_IMAGE_FONT_SIZE)
@@ -312,3 +227,96 @@ for _code_name in CODE_NAMES:
         fill=SEQUENCE_PATH_IMAGE_COLOR,
     )
     BUFFER_CODE_IMAGES.append(_code_image)
+
+
+class Templates:
+    def __init__(self):
+        self._language: Optional[str] = None
+
+        ## Language agnostic: buffer boxes
+        self.buffer_box = _rt(IMAGES_DIRECTORY / "buffer_box.png")
+
+        ## Sometimes language agnostic: codes
+        self._codes: Tuple[numpy.ndarray, ...] = tuple()
+        self.default_codes: Tuple[numpy.ndarray, ...] = tuple(
+            _rt(IMAGES_DIRECTORY / f"code_{it}.png") for it in range(len(CODE_NAMES))
+        )
+        self._small_codes: Tuple[numpy.ndarray, ...] = tuple()
+        self.default_small_codes: Tuple[numpy.ndarray, ...] = tuple(
+            _rt(IMAGES_DIRECTORY / f"code_{it}_small.png")
+            for it in range(len(CODE_NAMES))
+        )
+        self._daemons_gap_size: float = CV_DAEMONS_GAP_SIZE
+
+        ## Language dependent: titles and daemons
+        self._daemon_names: Dict[Daemon, str] = dict()
+        self._daemons: Dict[Daemon, numpy.ndarray] = dict()
+        self._titles: Dict[Title, numpy.ndarray] = dict()
+
+    def requires_language(method):
+        def _decorated(self, *args, **kwargs):
+            if not self._language:
+                raise ValueError(
+                    f"Templates.{method.__name__} requires a loaded language"
+                )
+            return method(self, *args, **kwargs)
+
+        return _decorated
+
+    def load_language(self, language: str):
+        data = TEMPLATE_LANGUAGE_DATA[language]
+        directory = data["directory"]
+
+        if (directory / "code_0.png").exists():
+            code_range = range(len(CODE_NAMES))
+            self._codes = tuple(_rt(directory / f"code_{it}.png") for it in code_range)
+            self._small_codes = tuple(
+                _rt(directory / f"code_{it}_small.png") for it in code_range
+            )
+        else:
+            self._codes = self.default_codes
+            self._small_codes = self.default_small_codes
+
+        self._daemons_gap_size = data.get("daemons_gap_size", CV_DAEMONS_GAP_SIZE)
+        self._daemon_names = {Daemon(k): v for k, v in data["daemons"].items()}
+        self._daemons = dict()
+        for daemon in Daemon:
+            daemon_image_file = directory / f"daemon_{daemon.value}.png"
+            if daemon_image_file.exists():
+                self._daemons[daemon] = _rt(daemon_image_file)
+
+        self._titles = {it: _rt(directory / f"title_{it.value}.png") for it in Title}
+        self._language = language
+
+    @property  # type: ignore
+    @requires_language
+    def codes(self):
+        return self._codes
+
+    @property  # type: ignore
+    @requires_language
+    def small_codes(self):
+        return self._small_codes
+
+    @property  # type: ignore
+    @requires_language
+    def daemon_names(self):
+        return self._daemon_names
+
+    @property  # type: ignore
+    @requires_language
+    def daemons(self):
+        return self._daemons
+
+    @property  # type: ignore
+    @requires_language
+    def titles(self):
+        return self._titles
+
+    @property  # type: ignore
+    @requires_language
+    def daemons_gap_size(self):
+        return self._daemons_gap_size
+
+
+CV_TEMPLATES = Templates()

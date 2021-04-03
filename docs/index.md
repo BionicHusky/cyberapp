@@ -28,6 +28,13 @@ built with GitLab CI Pipelines, and hosted in the GitLab Package Registry.
 I'm open to ideas! If you'd like to see something changed or if there's a bug,
 feel free to create an issue on the project page.
 
+### Common links
+
+* [Source code on GitLab](https://gitlab.com/jkchen2/cpah){target=_blank}
+* [Releases on GitLab](https://gitlab.com/jkchen2/cpah/-/releases){target=_blank}
+* [Issues on GitLab](https://gitlab.com/jkchen2/cpah/-/issues){target=_blank}
+* [Nexus Mods page](https://www.nexusmods.com/cyberpunk2077/mods/955){target=_blank}
+
 ## Download
 
 [Releases can be found here.](https://gitlab.com/jkchen2/cpah/-/releases){target=_blank}
@@ -111,6 +118,9 @@ Cyberpunk at a resolution smaller than 1080p.
 === "Autohack Settings"
     ![configuration_detection](media/usage_05_autohack_settings.png)
 
+=== "Advanced Settings"
+    ![configuration_detection](media/usage_06_advanced_settings.png)
+
 Each section in the configuration screen has a small description detailing what it does, which
 should provide enough information to be self-explanatory. However, here are a few more details
 for some specific options:
@@ -136,20 +146,22 @@ you find that CPAH is having issues.
 
 Here is a screenshot with elements labeled:
 
-![detection_legend](media/usage_06_detection_legend.png)
+![detection_legend](media/usage_07_detection_legend.png)
 
 | Color  | Description           | Default threshold |
 | ------ | --------------------- | ----------------- |
-| Red    | Core text elements    | 0.8               |
-| Orange | Matrix codes          | 0.8               |
+| Red    | Core text elements    | 0.7               |
+| Orange | Matrix codes          | 0.7               |
 | Cyan   | Buffer boxes          | 0.7               |
 | Blue   | Daemon sequence codes | 0.7               |
-| Purple | Daemon names          | 0.8               |
+| Purple | Daemon names          | 0.7               |
 
 The defaults are values that work well if playing the game at 1080p.
 The lower the resolution, the lower the detection threshold for certain elements need to be.
 There isn't an exact mapping between screen resolutions and detection thresholds,
 so you may need to play around with them and see what works for you.
+However, take care as to not set them too low, otherwise CPAH will exhibit strange behavior.
+It is recommended that threshold values should be 0.5 or greater.
 
 !!! note
     Buffer box detection is the hardest at lower resolutions -- sometimes lowering the detection
@@ -164,6 +176,36 @@ Additionally, you can choose which daemons to keep selected.
 Lastly, if you enable forced autohacking and you run analysis on a breach protocol puzzle
 composed of only datamine daemons, CPAH will try to maximize cash and component rewards.
 
+#### Sequential hotkey actions
+
+To reduce the hassle of needing to tab out of the game to interact with the CPAH GUI,
+you can enable sequential hotkey actions so that the hotkey can do multiple actions.
+
+Upon pressing the analysis hotkey the first time, a standard analysis will be run.
+If the hotkey is pressed again within the timeout period,
+daemons will be deselected until autohacking is possible (similar to the "force autohack" feature).
+If the hotkey is pressed again within the timeout period
+and autohacking is already or now possible, it will initiate the autohack.
+
+![sequential_hotkey_actions](media/usage_08_sequential_hotkey_actions.png)
+
+### GeForce NOW support
+
+If you are running Cyberpunk through GeForce NOW, you must tweak a few settings in CPAH
+before it can work as intended. All these settings are in the "Advanced" tab.
+
+First, you must change the game window title from `Cyberpunk 2077 (C) 2020 by CD Projekt RED`
+to `Cyberpunk 2077® on GeForce NOW`.
+
+Second, you must enable AutoHotkey support, as CPAH cannot send keyboard input to the
+GeForce NOW window by itself.  Note that this requires an
+[installation of AutoHotkey](https://www.autohotkey.com/){target=_blank}.
+If AutoHotkey is not installed in the default directory, you will have to specify
+the location of the AutoHotkey.exe executable.
+
+Once those options are set, you should be able to use CPAH with GeForce NOW as if you were
+running Cyberpunk natively on your computer.
+
 ## Debugging
 
 If CPAH encounters an unhandled error, it will display a traceback and exit.
@@ -174,6 +216,13 @@ If sending information in to debug a problem, this is an important file to inclu
 Additionally, if there is a problem with the configuration file being corrupt,
 it can be manually edited or removed at
 `%AppData%\cp2077_autohack\config.json`
+
+## Uninstallation
+
+If you'd like to remove CPAH from your system, all you need to do is delete the executable.
+
+CPAH stores log files and the configuration file in `%AppData%\cp2077_autohack` as well.
+That directory can be removed as well if necessary.
 
 ## FAQ
 

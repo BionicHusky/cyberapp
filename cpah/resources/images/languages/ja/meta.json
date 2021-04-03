@@ -1,5 +1,6 @@
 {
     "name": "日本語",
+	"daemons_gap_size": 60.0,
     "daemons": {
         "datamine_v1": "データマイニング_V1",
         "datamine_v2": "データマイニング_V2",
@@ -8,6 +9,8 @@
         "mass_vulnerability": "集団脆弱性",
         "turret_shutdown": "タレット停止",
         "friendly_turrets": "味方タレット",
-		    "camera_shutdown": "カメラ停止"
+        "camera_shutdown": "カメラ停止",
+        "weapons_jammer": "ウェポン ・ ジャマー",
+        "optics_jammer": "オプティクス ・ ジャマー"
     }
 }
