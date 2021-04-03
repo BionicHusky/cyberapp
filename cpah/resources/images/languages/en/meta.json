@@ -13,6 +13,7 @@
         "weapons_jammer": "WEAPONS JAMMER",
         "datamine_copy_malware": "DATAMINE: COPY MALWARE",
         "neutralize_malware": "NEUTRALIZE MALWARE",
-		"gain_access": "GAIN ACCESS"
+		"gain_access": "GAIN ACCESS",
+		"datamine_crafting_specs": "DATAMINE: CRAFTING SPECS"
     }
 }

@@ -140,16 +140,18 @@ Here is a screenshot with elements labeled:
 
 | Color  | Description           | Default threshold |
 | ------ | --------------------- | ----------------- |
-| Red    | Core text elements    | 0.8               |
-| Orange | Matrix codes          | 0.8               |
+| Red    | Core text elements    | 0.7               |
+| Orange | Matrix codes          | 0.7               |
 | Cyan   | Buffer boxes          | 0.7               |
 | Blue   | Daemon sequence codes | 0.7               |
-| Purple | Daemon names          | 0.8               |
+| Purple | Daemon names          | 0.7               |
 
 The defaults are values that work well if playing the game at 1080p.
 The lower the resolution, the lower the detection threshold for certain elements need to be.
 There isn't an exact mapping between screen resolutions and detection thresholds,
 so you may need to play around with them and see what works for you.
+However, take care as to not set them too low, otherwise CPAH will exhibit strange behavior.
+It is recommended that threshold values should be 0.5 or greater.
 
 !!! note
     Buffer box detection is the hardest at lower resolutions -- sometimes lowering the detection

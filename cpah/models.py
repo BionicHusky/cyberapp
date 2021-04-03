@@ -40,7 +40,7 @@ class Config(pydantic.BaseSettings):
         0, description="Buffer size manual override", ge=0, le=10
     )
     matrix_code_detection_threshold: float = pydantic.Field(
-        0.8,
+        0.7,
         description="Detection threshold for codes in the matrix",
         gt=0.0,
         lt=1.0,
@@ -58,13 +58,13 @@ class Config(pydantic.BaseSettings):
         lt=1.0,
     )
     daemon_detection_threshold: float = pydantic.Field(
-        0.8,
+        0.7,
         description="Detection threshold for sequence daemon names",
         gt=0.0,
         lt=1.0,
     )
     core_detection_threshold: float = pydantic.Field(
-        0.8,
+        0.7,
         description=(
             "Detection threshold for core elements of the breach protocol screen"
         ),

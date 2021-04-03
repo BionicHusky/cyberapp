@@ -270,6 +270,9 @@ def grab_screenshot(
 
         screenshot = screengrab_win32.getRectAsImage((x_start, y_start, x_end, y_end))
 
+    if screenshot.mode != "RGB":
+        screenshot = screenshot.convert("RGB")
+
     LOG.debug(f"Screenshot resolution: {screenshot.size}")
 
     ## Aspect ratio correction based on resolution aspect ratio
@@ -529,6 +532,7 @@ def parse_daemons_data(
     Tuple[str, ...],  ## Daemon names
 ]:
     """Parses the section of the screenshot to get sequences data."""
+    daemons_gap_size = constants.CV_TEMPLATES.daemons_gap_size
     box = screen_bounds.sequences
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
 
@@ -550,11 +554,11 @@ def parse_daemons_data(
 
     LOG.debug(f"Sequence parsing found min/max: ({x_min}, {y_min}) / ({y_max})")
 
-    sequences_size = round((y_max - y_min) / constants.CV_SEQUENCES_Y_GAP_SIZE) + 1
+    sequences_size = round((y_max - y_min) / daemons_gap_size) + 1
     data: List[List[int]] = [[] for _ in range(sequences_size)]
     for code_index, points in all_sequence_points.items():
         for x, y in points:
-            sequence_index = round((y - y_min) / constants.CV_SEQUENCES_Y_GAP_SIZE)
+            sequence_index = round((y - y_min) / daemons_gap_size)
             code_position = round((x - x_min) / constants.CV_SEQUENCES_X_GAP_SIZE)
             sequence = data[sequence_index]
             size_difference = code_position - len(sequence) + 1
@@ -589,9 +593,7 @@ def parse_daemons_data(
         daemon_results = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
         _, confidence, _, location = cv2.minMaxLoc(daemon_results)
         if confidence >= config.daemon_detection_threshold:
-            daemon_index = round(
-                (location[1] - y_min) / constants.CV_SEQUENCES_Y_GAP_SIZE
-            )
+            daemon_index = round((location[1] - y_min) / daemons_gap_size)
             daemons[daemon_index] = daemon_enum
             daemon_names[daemon_index] = constants.CV_TEMPLATES.daemon_names.get(
                 daemon_enum, "UNKNOWN"

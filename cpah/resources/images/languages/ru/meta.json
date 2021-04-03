@@ -8,6 +8,8 @@
         "mass_vulnerability": "ВЫЗВАТЬ МАССОВУЮ УЯЗВИМОСТЬ",
         "turret_shutdown": "ОТКЛЮЧИТЬ ТУРЕЛЬ",
         "friendly_turrets": "СДЕЛАТЬ ТУРЕЛИ ДРУЖЕСТВЕННЫМИ",
-		"camera_shutdown": "ОТКЛЮЧИТЬ КАМЕРУ"
+		"camera_shutdown": "ОТКЛЮЧИТЬ КАМЕРУ",
+        "weapons_jammer": "БЛОКИРОВАТЬ ОРУЖИЕ",
+		"optics_jammer": "БЛОКИРОВАТЬ ОПТИКУ"
     }
 }

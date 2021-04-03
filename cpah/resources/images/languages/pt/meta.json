@@ -8,6 +8,8 @@
         "mass_vulnerability": "VULNERABILIDADE EM MASSA",
         "turret_shutdown": "DESLIGAMENTO DE TORRETA",
         "friendly_turrets": "TORRETAS ALIADAS",
-		"camera_shutdown": "DESLIGAMENTO DE CÂMERA"
+		"camera_shutdown": "DESLIGAMENTO DE CÂMERA",
+        "weapons_jammer": "INTERFERIDOR DE ARMAS",
+		"optics_jammer": "INTERFERIDOR DE ÓPTICA"
     }
 }
