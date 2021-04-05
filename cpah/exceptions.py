@@ -37,8 +37,8 @@ class CPAHHotkeyRegistrationException(CPAHException):
 
 
 class CPAHGameNotFoundException(CPAHException):
-    def __init__(self):
-        super().__init__(f"Game window not found: {constants.GAME_EXECUTABLE_TITLE}")
+    def __init__(self, window_title: str):
+        super().__init__(f"Game window not found: {window_title}")
 
 
 class CPAHScreenshotParseFailedException(CPAHException):
