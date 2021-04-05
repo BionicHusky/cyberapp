@@ -49,6 +49,11 @@ def _migrate_config(data: Dict) -> Dict:
         data["sequential_hotkey_actions_timeout"] = 5000
         config_version = data["schema_version"] = 3
 
+    if config_version == 3:
+        LOG.debug("Converting config format from version 3 to version 4")
+        data["daemon_toggle_hotkey"] = list()
+        config_version = data["schema_version"] = 4
+
     ## NOTE Add more conditionals when more schema versions are added
     ## Remember constants.CONFIG_SCHEMA_VERSION needs to be modified
 
@@ -249,7 +254,7 @@ def _focus_game_window(config: models.Config) -> int:
         LOG.debug("Game window already active")
         return hwnd
     if not hwnd:
-        raise exceptions.CPAHGameNotFoundException()
+        raise exceptions.CPAHGameNotFoundException(config.window_title)
     win32gui.SetForegroundWindow(hwnd)
     time.sleep(config.game_focus_delay / 1000)
     return hwnd

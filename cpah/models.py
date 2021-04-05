@@ -139,9 +139,12 @@ class Config(pydantic.BaseSettings):
         ge=1000,
         le=30000,
     )
+    daemon_toggle_hotkey: List[str] = pydantic.Field(
+        list(), description="Hotkey for kicking off analysis"
+    )
 
     @pydantic.validator("analysis_hotkey")
-    def hotkey_sequence_validator(cls, value: List[str]) -> List[str]:
+    def analysis_hotkey_sequence_validator(cls, value: List[str]) -> List[str]:
         valid = set(system_hotkey.vk_codes).union(set(system_hotkey.win_modders))
         invalid_keys = set(value).difference(valid)
         if invalid_keys:
@@ -155,7 +158,25 @@ class Config(pydantic.BaseSettings):
                 hotkey.parse_hotkeylist(value)
             except Exception as exception:
                 LOG.exception("analysis_hotkey sequence invalid:")
-                raise ValueError(f"Analysis hotkey sequnece invalid: {exception}")
+                raise ValueError(f"Analysis hotkey sequence invalid: {exception}")
+        return value
+
+    @pydantic.validator("daemon_toggle_hotkey")
+    def daemon_toggle_hotkey_sequence_validator(cls, value: List[str]) -> List[str]:
+        valid = set(system_hotkey.vk_codes).union(set(system_hotkey.win_modders))
+        invalid_keys = set(value).difference(valid)
+        if invalid_keys:
+            raise ValueError(
+                f"The following keys are invalid: {', '.join(invalid_keys)}"
+            )
+
+        if value:
+            hotkey = system_hotkey.SystemHotkey()
+            try:
+                hotkey.parse_hotkeylist(value + ["1"])
+            except Exception as exception:
+                LOG.exception("daemon_toggle_hotkey sequence invalid:")
+                raise ValueError(f"Daemon toggle hotkey sequence invalid: {exception}")
         return value
 
     @pydantic.validator("detection_language")

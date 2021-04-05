@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>520</width>
-    <height>540</height>
+    <height>550</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -30,7 +30,7 @@ QCheckBox::indicator {
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>510</y>
+     <y>520</y>
      <width>341</width>
      <height>21</height>
     </rect>
@@ -52,7 +52,7 @@ QCheckBox::indicator {
    <property name="geometry">
     <rect>
      <x>440</x>
-     <y>510</y>
+     <y>520</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -65,7 +65,7 @@ QCheckBox::indicator {
    <property name="geometry">
     <rect>
      <x>360</x>
-     <y>510</y>
+     <y>520</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -80,7 +80,7 @@ QCheckBox::indicator {
      <x>5</x>
      <y>5</y>
      <width>511</width>
-     <height>501</height>
+     <height>511</height>
     </rect>
    </property>
    <property name="styleSheet">
@@ -1345,6 +1345,51 @@ QCheckBox::indicator {
       </property>
      </widget>
     </widget>
+    <widget class="QGroupBox" name="groupBox_15">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>380</y>
+       <width>485</width>
+       <height>91</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Daemon toggle hotkey</string>
+     </property>
+     <widget class="QLabel" name="label_27">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>40</y>
+        <width>471</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Allows the toggling of specific daemons via a hotkey. For example, if the hotkey is configured as `control + shift`, the second daemon from the top can be toggled by pressing `control + shift + 2`. Clear the field to disable the hotkey.</string>
+      </property>
+      <property name="textFormat">
+       <enum>Qt::MarkdownText</enum>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="daemonToggleHotkeyLineEdit">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>466</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="placeholderText">
+       <string>Example: control + shift</string>
+      </property>
+     </widget>
+    </widget>
    </widget>
   </widget>
  </widget>
@@ -1389,6 +1434,7 @@ QCheckBox::indicator {
   <tabstop>ahkRightKeyLineEdit</tabstop>
   <tabstop>shaCheckBox</tabstop>
   <tabstop>shaTimeoutSpinBox</tabstop>
+  <tabstop>daemonToggleHotkeyLineEdit</tabstop>
   <tabstop>okButton</tabstop>
   <tabstop>cancelButton</tabstop>
  </tabstops>

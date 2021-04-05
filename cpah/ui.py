@@ -362,6 +362,7 @@ class ErrorHandlerMixin:
 class CPAH(ErrorHandlerMixin, QWidget):
 
     analysis_hotkey_signal = Signal()
+    daemon_toggle_hotkey_signal = Signal(int)
 
     def __init__(self):
         super().__init__()
@@ -652,6 +653,11 @@ class CPAH(ErrorHandlerMixin, QWidget):
         self.autohack_button.setEnabled(True)
         self.autohack_button.setText(f"AUTOHACK")
 
+    def daemon_toggle_hotkey_pressed(self, daemon_index):
+        LOG.debug(f"daemon_toggle_hotkey_pressed (daemon_index={daemon_index})")
+        if daemon_index < len(self.sequence_container.sequences):
+            self.sequence_container.sequences[daemon_index].toggle()
+
     def open_configuration(self):
         LOG.debug("open_configuration")
         self.configuration_screen.show()
@@ -675,6 +681,20 @@ class CPAH(ErrorHandlerMixin, QWidget):
                 self.config.analysis_hotkey,
                 callback=lambda _: self.analysis_hotkey_signal.emit(),  # type: ignore
             )
+        if self.config.daemon_toggle_hotkey:
+            LOG.debug(
+                "Registering daemon toggling binds for "
+                f"{self.config.daemon_toggle_hotkey} 1-8"
+            )
+
+            def _emit_wrapper(*args, index):
+                self.daemon_toggle_hotkey_signal.emit(index)
+
+            for daemon_index in range(8):
+                bind = self.config.daemon_toggle_hotkey + [f"{daemon_index + 1}"]
+                LOG.debug(f"Registering daemon toggle bind: {bind}")
+                _callback = functools.partial(_emit_wrapper, index=daemon_index)
+                self.hotkey.register(bind, callback=_callback)
 
         if reset_displays:
             self.reset_displays()
@@ -840,6 +860,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
         LOG.debug("Bootstrapping application")
         self.config = logic.load_config()
         self.analysis_hotkey_signal.connect(self.analysis_hotkey_pressed)
+        self.daemon_toggle_hotkey_signal.connect(self.daemon_toggle_hotkey_pressed)
         self.configuration_changed(reset_displays=False)
 
     def load_ui(self):
@@ -915,9 +936,13 @@ class SequenceContainer(ErrorHandlerMixin, QWidget):
             old_sequence.deleteLater()
 
         self.sequences = list()
-        for sequence_selection_data in sequences or list():
-            selection = SequenceSelection(sequence_selection_data)
+        for sequence_index, sequence_selection_data in enumerate(sequences or list()):
+            selection = SequenceSelection(
+                self.parent_widget.config, sequence_index, sequence_selection_data
+            )
             selection.selection_updated.connect(self.parent_widget.recalculate_solution)
+            scroll_callback = functools.partial(self.scroll_sequence_to_view, selection)
+            selection.selection_updated.connect(scroll_callback)
             layout.addWidget(selection)
             self.sequences.append(selection)
         calculated_height = 76 * len(self.sequences) - (
@@ -928,6 +953,10 @@ class SequenceContainer(ErrorHandlerMixin, QWidget):
         self.parent_widget.sequences_label.setText(
             "" if self.sequences else "SEQUENCES"
         )
+
+    @ErrorHandlerMixin.no_self_focus
+    def scroll_sequence_to_view(self, sequence_selection: "SequenceSelection"):
+        self.parent_widget.scroll_area_widget.ensureWidgetVisible(sequence_selection)
 
     @ErrorHandlerMixin.no_self_focus
     def select_sequences(self, selections: Tuple[int, ...]):
@@ -943,7 +972,12 @@ class SequenceSelection(ErrorHandlerMixin, QFrame):
     selection_updated = Signal()
 
     @ErrorHandlerMixin.no_self_focus
-    def __init__(self, sequence_selection_data: models.SequenceSelectionData):
+    def __init__(
+        self,
+        config: models.Config,
+        sequence_index: int,
+        sequence_selection_data: models.SequenceSelectionData,
+    ):
         super().__init__()
         self.data = sequence_selection_data
         self.setCursor(Qt.PointingHandCursor)
@@ -952,7 +986,10 @@ class SequenceSelection(ErrorHandlerMixin, QFrame):
         self.sequence_label.setText(sequence_text)
         self.sequence_label.setGeometry(QRect(10, 30, 350, 20))
         self.daemon_label = QLabel(self)
-        self.daemon_label.setText(self.data.daemon_name)
+        label_name = self.data.daemon_name
+        if config.daemon_toggle_hotkey:
+            label_name = f"{sequence_index + 1}: {label_name}"
+        self.daemon_label.setText(label_name)
         self.daemon_label.setGeometry(QRect(10, 10, 350, 20))
         self.update_appearance()
 
@@ -967,9 +1004,13 @@ class SequenceSelection(ErrorHandlerMixin, QFrame):
         self.setStyleSheet(f"color: {color};\nborder-color: {color};")
 
     @ErrorHandlerMixin.no_self_focus
-    def mouseReleaseEvent(self, event):
+    def toggle(self):
         self.data.selected = not self.data.selected
         self.selection_updated.emit()
+
+    @ErrorHandlerMixin.no_self_focus
+    def mouseReleaseEvent(self, event):
+        self.toggle()
         ## Appearance is later updated via the container calling set_selected
 
 
@@ -1078,6 +1119,9 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
         self.ahk_right_key_line_edit = self.findChild(QLineEdit, "ahkRightKeyLineEdit")
         self.sha_check_box = self.findChild(QCheckBox, "shaCheckBox")
         self.sha_timeout_spin_box = self.findChild(QSpinBox, "shaTimeoutSpinBox")
+        self.daemon_toggle_hotkey_line_edit = self.findChild(
+            QLineEdit, "daemonToggleHotkeyLineEdit"
+        )
 
         ## Connect buttons
         self.ahk_executable_browse_button.clicked.connect(
@@ -1146,6 +1190,9 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
             )
         self.sha_check_box.setChecked(config.sequential_hotkey_actions)
         self.sha_timeout_spin_box.setValue(config.sequential_hotkey_actions_timeout)
+        self.daemon_toggle_hotkey_line_edit.setText(
+            " + ".join(config.daemon_toggle_hotkey)
+        )
 
     def showEvent(self, event: QShowEvent):
         self.configuration_screen_open_signal.emit(True)  # type: ignore
@@ -1207,6 +1254,12 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
                 setattr(test.ahk_autohack_key_bindings, key_name, key_value)
             test.sequential_hotkey_actions = self.sha_check_box.isChecked()
             test.sequential_hotkey_actions_timeout = self.sha_timeout_spin_box.value()
+            hotkey_string = self.daemon_toggle_hotkey_line_edit.text().lower().strip()
+            if hotkey_string:
+                hotkeys = list(it.strip() for it in hotkey_string.split("+"))
+            else:
+                hotkeys = list()
+            test.daemon_toggle_hotkey = hotkeys
 
             test_dict = test.dict()
             LOG.debug(f"Testing validity of config: {test_dict}")
