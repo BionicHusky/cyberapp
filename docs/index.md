@@ -189,6 +189,17 @@ and autohacking is already or now possible, it will initiate the autohack.
 
 ![sequential_hotkey_actions](media/usage_08_sequential_hotkey_actions.png)
 
+#### Daemon toggle hotkey
+
+To further reduce the hassle of needing to tab out of the game to toggle daemons,
+you can add an additional hotkey for toggling found daemons.
+
+For example, if you configure the hotkey to be ++control+shift++,
+you can press ++control+shift+2++ to toggle the second daemon in the list.
+These hotkeys will be enabled for number keys 1 through 8.
+
+![daemon_toggle_hotkey_example](media/usage_09_daemon_toggle_hotkey_example.png)
+
 ### GeForce NOW support
 
 If you are running Cyberpunk through GeForce NOW, you must tweak a few settings in CPAH
