@@ -255,7 +255,7 @@ mandatory, but should be provided if possible. For example:
 
 When both the template images and metadata file are ready,
 they can be added to a new directory under
-[`cpah/resources/images/languages`](https://gitlab.com/jkchen2/cpah/-/tree/master/cpah/resources/images/languages){target=_blank}.
+[`cpah/resources/images/languages`](https://gitlab.com/jkchen2/cpah/-/tree/main/cpah/resources/images/languages){target=_blank}.
 The new directory name should be the
 [language tag](https://en.wikipedia.org/wiki/Language_localisation#Language_tags_and_codes){target=_blank},
 with an optional sub-code if necessary.
