@@ -59,7 +59,7 @@ pages:
       - .shared_windows_runners
     stage: docs
     only:
-      - master
+      - main
     dependencies: []
     artifacts:
         paths:
@@ -74,7 +74,7 @@ release:
       - .shared_windows_runners
     stage: release
     only:
-      - master
+      - main
     dependencies:
       - build
     script:
