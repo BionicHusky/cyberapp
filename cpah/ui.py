@@ -313,6 +313,7 @@ class ErrorHandlerMixin:
             try:
                 return method(self, *args, **kwargs)
             except Exception as exception:
+                LOG.exception("Exception handler caught exception:")
                 self._error_handler_signal.emit(
                     models.Error(exception), self if self_focus else None
                 )
@@ -1279,6 +1280,7 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
 
 def start():
     LOG.info(f"Starting {constants.APPLICATION_NAME} {constants.VERSION}")
+    LOG.debug(f"Module directory: {constants.MODULE_DIRECTORY}")
     constants.QAPPLICATION_INSTANCE.setAttribute(Qt.AA_EnableHighDpiScaling)
     try:
         widget = CPAH()

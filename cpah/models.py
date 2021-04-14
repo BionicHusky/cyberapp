@@ -250,12 +250,11 @@ class Error:
 
     def __init__(self, exception: Exception):
         message = str(exception)
-        traceback_string = ""
+        traceback_string = "\n".join(traceback.format_tb(exception.__traceback__))
         if isinstance(exception, exceptions.CPAHException):
             critical = exception.critical
             unhandled = False
         else:
-            traceback_string = "\n".join(traceback.format_tb(exception.__traceback__))
             unhandled = critical = True
 
         if unhandled:
