@@ -29,6 +29,8 @@ def _rt(template_image_path: pathlib.Path):
     return cv2.imread(str(template_image_path), flags=cv2.IMREAD_COLOR)
 
 
+DOCUMENTATION_LINK = "https://jkchen2.gitlab.io/cpah/"
+
 ## Detect if running frozen
 if hasattr(sys, "_MEIPASS"):
     MODULE_DIRECTORY = pathlib.Path(sys._MEIPASS).resolve()  # type: ignore
@@ -38,7 +40,7 @@ _version_file = MODULE_DIRECTORY / "VERSION"
 
 ## General application constants
 APPLICATION_NAME = "cp2077_autohack"
-CONFIG_SCHEMA_VERSION = 4
+CONFIG_SCHEMA_VERSION = 5
 VERSION = (
     _version_file.read_text().strip() if _version_file.is_file() else "development"
 )

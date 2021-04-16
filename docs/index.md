@@ -14,10 +14,11 @@ Check out the video below for a quick demonstration:
 * Selectable daemons in case your buffer size is not large enough
 * Autohacking by sending keys to solve the matrix for you
 * Forced autohacking and optimized datamine rewards
-* Configurable hotkey to prevent the need to switch windows
+* Configurable hotkeys to prevent the need to switch windows
 * Sound notifications for people with only one monitor
 * Configurable detection and override settings if you are playing at a small resolution
 * Support for Cyberpunk running in some [other languages](development/#adding-languages)
+* Support for GeForce NOW users
 
 Internally, the code is linted with [Black](https://github.com/psf/black){target=_blank}
 and [mypy](https://github.com/python/mypy){target=_blank},
@@ -125,7 +126,7 @@ Each section in the configuration screen has a small description detailing what 
 should provide enough information to be self-explanatory. However, here are a few more details
 for some specific options:
 
-#### Analysis hotkey
+#### Analysis and autohack hotkeys
 
 The analysis hotkey field defines the hotkey that runs analysis if pressed. It is a `+` delimited
 list of keys. By default, this sequence is `control + shift + h`. Below is a table listing some
@@ -137,6 +138,19 @@ example hotkeys:
 | `super + f1`           | ++windows+f1++       |
 | `control + alt + kp_5` | ++control+alt+num5++ |
 | `control + home`       | ++control+home++     |
+
+The same applies to the autohack hotkey, except that one controls the autohack.
+
+#### Daemon toggle hotkey prefix
+
+To further reduce the hassle of needing to tab out of the game to toggle daemons,
+you can add an additional hotkey for toggling found daemons.
+
+For example, if you configure the hotkey prefix to be ++control+shift++,
+you can press ++control+shift+2++ to toggle the second daemon in the list.
+These hotkeys will be enabled for number keys 1 through 8.
+
+![daemon_toggle_hotkey_example](media/usage_09_daemon_toggle_hotkey_example.png)
 
 #### Detection thresholds
 
@@ -188,17 +202,6 @@ If the hotkey is pressed again within the timeout period
 and autohacking is already or now possible, it will initiate the autohack.
 
 ![sequential_hotkey_actions](media/usage_08_sequential_hotkey_actions.png)
-
-#### Daemon toggle hotkey
-
-To further reduce the hassle of needing to tab out of the game to toggle daemons,
-you can add an additional hotkey for toggling found daemons.
-
-For example, if you configure the hotkey to be ++control+shift++,
-you can press ++control+shift+2++ to toggle the second daemon in the list.
-These hotkeys will be enabled for number keys 1 through 8.
-
-![daemon_toggle_hotkey_example](media/usage_09_daemon_toggle_hotkey_example.png)
 
 ### GeForce NOW support
 

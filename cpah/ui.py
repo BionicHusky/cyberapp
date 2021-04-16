@@ -5,6 +5,7 @@ import pathlib
 import sys
 import time
 import types
+import webbrowser
 import winsound
 
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
@@ -313,6 +314,7 @@ class ErrorHandlerMixin:
             try:
                 return method(self, *args, **kwargs)
             except Exception as exception:
+                LOG.exception("Exception handler caught exception:")
                 self._error_handler_signal.emit(
                     models.Error(exception), self if self_focus else None
                 )
@@ -362,6 +364,7 @@ class ErrorHandlerMixin:
 class CPAH(ErrorHandlerMixin, QWidget):
 
     analysis_hotkey_signal = Signal()
+    autohack_hotkey_signal = Signal()
     daemon_toggle_hotkey_signal = Signal(int)
 
     def __init__(self):
@@ -374,22 +377,39 @@ class CPAH(ErrorHandlerMixin, QWidget):
         self._temp_threads: List[ThreadContainer] = list()
         self.hotkey = system_hotkey.SystemHotkey()
 
+        ## This nested decorator and monkey patching abomination is to
+        ## wrap errors that are raised from the hotkey registering thread
+        ## while also retaining information about what hotkey was attempted
+        ## to be registered.
         def _error_handle_wrap_hotkey(method):
+
+            _original_grab = self.hotkey._the_grab
+
             def _decorated(*args, **kwargs):
-                try:
-                    return method(*args, **kwargs)
-                except system_hotkey.SystemRegisterError as exception:
-                    self._error_handler_signal.emit(
-                        models.Error(
-                            exceptions.CPAHHotkeyRegistrationException(exception)
-                        ),
-                        self,
-                    )
+                def _sh_wrap(inner_method):
+                    def _inner_decorated(*inner_args, **inner_kwargs):
+                        try:
+                            return inner_method(*inner_args, **inner_kwargs)
+                        except system_hotkey.SystemRegisterError as exception:
+                            self._error_handler_signal.emit(
+                                models.Error(
+                                    exceptions.CPAHHotkeyRegistrationException(
+                                        exception,
+                                        full_bind=args[0],
+                                    )
+                                ),
+                                self,
+                            )
+
+                    return _inner_decorated
+
+                self.hotkey._the_grab = _sh_wrap(_original_grab)
+                return method(*args, **kwargs)
 
             return _decorated
 
         ## Patch system_hotkey so that errors are properly caught when using Qt
-        self.hotkey._the_grab = _error_handle_wrap_hotkey(self.hotkey._the_grab)
+        self.hotkey.register = _error_handle_wrap_hotkey(self.hotkey.register)
 
         ## State
         self.analyzing = False
@@ -402,8 +422,9 @@ class CPAH(ErrorHandlerMixin, QWidget):
         self.sequence_path_data: models.SequencePathData = None
         self.buffer_image_cache: Image.Image = None
 
-        self.bootstrap()
+        self.config = logic.load_config()
         self.load_ui()
+        self.bootstrap()
 
     @ErrorHandlerMixin.ignore
     def _set_up_worker(
@@ -479,25 +500,38 @@ class CPAH(ErrorHandlerMixin, QWidget):
             LOG.debug(f"User selected screenshot: {selected_file}")
             self.start_analysis(from_file=pathlib.Path(selected_file))
 
-    def analysis_hotkey_pressed(self):
-        LOG.debug("analysis_hotkey_pressed")
-        if (
+    def _in_hotkey_sequence(self) -> bool:
+        """Helper function for determining if the hotkey sequence is active."""
+        return bool(
             self.config.sequential_hotkey_actions
             and not self.config.auto_autohack
             and self.hotkey_action_timeout
             and time.time() < self.hotkey_action_timeout
             and self.sequence_path_data
-        ):
+        )
+
+    def _refresh_hotkey_sequence(self):
+        """Helper function for setting/refreshing the hotkey sequence state."""
+        self.hotkey_action_timeout = (
+            time.time() + self.config.sequential_hotkey_actions_timeout / 1000
+        )
+        self.sequential_hotkey_action_timeout_checker()
+
+    def analysis_hotkey_pressed(self):
+        LOG.debug("analysis_hotkey_pressed")
+        if self._in_hotkey_sequence():
             if self.sequence_path_data.solution_valid:
                 LOG.debug("Sequential hotkey action: autohack")
-                self.hotkey_action_timeout = 0.0
-                self.sequential_hotkey_action_timeout_checker()
                 self.start_autohack()
             else:
                 LOG.debug("Sequential hotkey action: deselect daemons")
                 self.recalculate_solution(force_solve=True, hotkey=True)
         else:
             self.start_analysis(hotkey=True)
+
+    def autohack_hotkey_pressed(self):
+        LOG.debug("autohack_hotkey_pressed")
+        self.start_autohack()
 
     def start_analysis(
         self, from_file: Optional[pathlib.Path] = None, hotkey: bool = False
@@ -561,10 +595,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
     def analysis_finished(self, autohacking: bool = False, hotkey_action: bool = False):
         LOG.debug("analysis_finished")
         if hotkey_action:
-            self.hotkey_action_timeout = (
-                time.time() + self.config.sequential_hotkey_actions_timeout / 1000
-            )
-            self.sequential_hotkey_action_timeout_checker()
+            self._refresh_hotkey_sequence()
         self.analyzing = False
         self.analyze_button.setEnabled(not autohacking)
         self._reset_analyze_button_text()
@@ -602,8 +633,25 @@ class CPAH(ErrorHandlerMixin, QWidget):
         LOG.debug(f"Analyzing status set to: {status}")
         self.analyze_button.setText(f"ANALYZING... [{status}]")
 
-    def start_autohack(self):
+    def start_autohack(self) -> None:
         LOG.debug("start_autohack")
+
+        if not (self.sequence_path_data and self.sequence_path_data.solution_valid):
+            LOG.debug(
+                "Ignoring autohack start because the "
+                "sequence path data does not have a solution"
+            )
+            return
+        elif not self._get_enabled_selections():
+            LOG.debug("Ignoring autohack start because there are no selected daemons")
+            return
+        elif self.autohacking:
+            LOG.debug("Ignoring autohack start because an autohack is already running")
+            return
+
+        if self._in_hotkey_sequence():
+            self.hotkey_action_timeout = 0.0
+            self.sequential_hotkey_action_timeout_checker()
 
         if self.config.show_autohack_warning_message:
             LOG.debug("Showing first time autohack warning")
@@ -655,6 +703,8 @@ class CPAH(ErrorHandlerMixin, QWidget):
 
     def daemon_toggle_hotkey_pressed(self, daemon_index):
         LOG.debug(f"daemon_toggle_hotkey_pressed (daemon_index={daemon_index})")
+        if self._in_hotkey_sequence():
+            self._refresh_hotkey_sequence()
         if daemon_index < len(self.sequence_container.sequences):
             self.sequence_container.sequences[daemon_index].toggle()
 
@@ -675,29 +725,53 @@ class CPAH(ErrorHandlerMixin, QWidget):
         for existing_bind in existing_binds:
             LOG.debug(f"Unregistering bind {existing_bind}")
             self.hotkey.unregister(existing_bind)
-        if self.config.analysis_hotkey:
-            LOG.debug(f"Registering bind {self.config.analysis_hotkey}")
-            self.hotkey.register(
-                self.config.analysis_hotkey,
-                callback=lambda _: self.analysis_hotkey_signal.emit(),  # type: ignore
-            )
-        if self.config.daemon_toggle_hotkey:
-            LOG.debug(
-                "Registering daemon toggling binds for "
-                f"{self.config.daemon_toggle_hotkey} 1-8"
-            )
 
-            def _emit_wrapper(*args, index):
-                self.daemon_toggle_hotkey_signal.emit(index)
+        try:
+            if self.config.analysis_hotkey:
+                LOG.debug(f"Registering bind {self.config.analysis_hotkey}")
+                self.hotkey.register(
+                    self.config.analysis_hotkey,
+                    callback=lambda _: self.analysis_hotkey_signal.emit(),  # type: ignore
+                )
+            if self.config.autohack_hotkey:
+                LOG.debug(f"Registering bind {self.config.autohack_hotkey}")
+                self.hotkey.register(
+                    self.config.autohack_hotkey,
+                    callback=lambda _: self.autohack_hotkey_signal.emit(),  # type: ignore
+                )
+            if self.config.daemon_toggle_hotkey:
+                LOG.debug(
+                    "Registering daemon toggling binds for "
+                    f"{self.config.daemon_toggle_hotkey} 1-8"
+                )
 
-            for daemon_index in range(8):
-                bind = self.config.daemon_toggle_hotkey + [f"{daemon_index + 1}"]
-                LOG.debug(f"Registering daemon toggle bind: {bind}")
-                _callback = functools.partial(_emit_wrapper, index=daemon_index)
-                self.hotkey.register(bind, callback=_callback)
+                def _emit_wrapper(*args, index):
+                    self.daemon_toggle_hotkey_signal.emit(index)
+
+                for daemon_index in range(8):
+                    bind = self.config.daemon_toggle_hotkey + [f"{daemon_index + 1}"]
+                    LOG.debug(f"Registering daemon toggle bind: {bind}")
+                    _callback = functools.partial(_emit_wrapper, index=daemon_index)
+                    self.hotkey.register(bind, callback=_callback)
+        except system_hotkey.SystemRegisterError as register_error:
+            LOG.exception("Hotkey could not be registered")
+            self._error_handler_signal.emit(  # type: ignore
+                models.Error(
+                    exceptions.CPAHHotkeyRegistrationException(register_error)
+                ),
+                self,
+            )
 
         if reset_displays:
             self.reset_displays()
+
+    def _get_enabled_selections(self) -> List[int]:
+        """Helper for getting enabled daemon selections."""
+        enabled_selections = list()
+        for index, sequence_selection in enumerate(self.sequence_container.sequences):
+            if sequence_selection.data.selected:
+                enabled_selections.append(index)
+        return enabled_selections
 
     def show_solution(self, sequence_path_data: models.SequencePathData):
         LOG.debug("show_solution")
@@ -733,16 +807,13 @@ class CPAH(ErrorHandlerMixin, QWidget):
             self.recalculate_solution_finished
         )
 
-        enabled_selections = list()
-        for index, sequence_selection in enumerate(self.sequence_container.sequences):
-            if sequence_selection.data.selected:
-                enabled_selections.append(index)
-
         ## All entries deselected
+        enabled_selections = self._get_enabled_selections()
         if not enabled_selections:
             self.set_matrix_overlay_image()
             self.set_buffer_overlay_image()
             self.sequence_container.select_sequences(tuple())
+            self.autohack_button.setEnabled(False)
         else:
             start_worker(
                 self.config,
@@ -755,10 +826,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
     def recalculate_solution_finished(self, hotkey_action: bool):
         LOG.debug("recalculate_solution_finished")
         if hotkey_action:
-            self.hotkey_action_timeout = (
-                time.time() + self.config.sequential_hotkey_actions_timeout / 1000
-            )
-            self.sequential_hotkey_action_timeout_checker()
+            self._refresh_hotkey_sequence()
 
     def _convert_and_set_image(self, image: Image.Image, label: QLabel):
         """Helper function to convert an image and set it on the label."""
@@ -858,8 +926,8 @@ class CPAH(ErrorHandlerMixin, QWidget):
     def bootstrap(self):
         """Loads the config file and sets the system-wide autohack hotkey."""
         LOG.debug("Bootstrapping application")
-        self.config = logic.load_config()
         self.analysis_hotkey_signal.connect(self.analysis_hotkey_pressed)
+        self.autohack_hotkey_signal.connect(self.autohack_hotkey_pressed)
         self.daemon_toggle_hotkey_signal.connect(self.daemon_toggle_hotkey_pressed)
         self.configuration_changed(reset_displays=False)
 
@@ -1060,6 +1128,9 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
         self.analysis_hotkey_line_edit = self.findChild(
             QLineEdit, "analysisHotkeyLineEdit"
         )
+        self.autohack_hotkey_line_edit = self.findChild(
+            QLineEdit, "autohackHotkeyLineEdit"
+        )
         self.focus_delay_spin_box = self.findChild(QSpinBox, "focusDelaySpinBox")
 
         ## Detection settings
@@ -1127,6 +1198,14 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
         self.ahk_executable_browse_button.clicked.connect(
             self.open_ahk_executable_file_picker
         )
+        self.documentation_button = self.findChild(QPushButton, "documentationButton")
+        self.documentation_button.clicked.connect(
+            lambda: webbrowser.open(constants.DOCUMENTATION_LINK)
+        )
+        self.open_logs_button = self.findChild(QPushButton, "openLogsButton")
+        self.open_logs_button.clicked.connect(
+            lambda: os.startfile(constants.APPLICATION_DIRECTORY)
+        )
         self.ok_button = self.findChild(QPushButton, "okButton")
         self.ok_button.clicked.connect(lambda: self.close(save=True))
         self.cancel_button = self.findChild(QPushButton, "cancelButton")
@@ -1152,6 +1231,7 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
         self.automatic_autohacking_check_box.setChecked(config.auto_autohack)
         self.beep_notifications_check_box.setChecked(config.enable_beeps)
         self.analysis_hotkey_line_edit.setText(" + ".join(config.analysis_hotkey))
+        self.autohack_hotkey_line_edit.setText(" + ".join(config.autohack_hotkey))
         self.focus_delay_spin_box.setValue(config.game_focus_delay)
 
         ## Detection settings
@@ -1218,6 +1298,12 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
             else:
                 hotkeys = list()
             test.analysis_hotkey = hotkeys
+            hotkey_string = self.autohack_hotkey_line_edit.text().lower().strip()
+            if hotkey_string:
+                hotkeys = list(it.strip() for it in hotkey_string.split("+"))
+            else:
+                hotkeys = list()
+            test.autohack_hotkey = hotkeys
             test.game_focus_delay = self.focus_delay_spin_box.value()
 
             ## Detection settings
@@ -1279,6 +1365,7 @@ class ConfigurationScreen(ErrorHandlerMixin, QWidget):
 
 def start():
     LOG.info(f"Starting {constants.APPLICATION_NAME} {constants.VERSION}")
+    LOG.debug(f"Module directory: {constants.MODULE_DIRECTORY}")
     constants.QAPPLICATION_INSTANCE.setAttribute(Qt.AA_EnableHighDpiScaling)
     try:
         widget = CPAH()

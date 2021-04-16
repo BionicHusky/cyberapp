@@ -56,6 +56,9 @@ class Config(pydantic.BaseSettings):
     analysis_hotkey: List[str] = pydantic.Field(
         ["control", "shift", "h"], description="Hotkey for kicking off analysis"
     )
+    autohack_hotkey: List[str] = pydantic.Field(
+        ["control", "shift", "k"], description="Hotkey for kicking off the autohack"
+    )
     game_focus_delay: int = pydantic.Field(
         400,
         description="Amount of milliseconds to wait after the game is focused",
@@ -140,14 +143,17 @@ class Config(pydantic.BaseSettings):
         le=30000,
     )
     daemon_toggle_hotkey: List[str] = pydantic.Field(
-        list(), description="Hotkey for kicking off analysis"
+        ["control", "shift"], description="Hotkey for kicking off analysis"
     )
 
-    @pydantic.validator("analysis_hotkey")
-    def analysis_hotkey_sequence_validator(cls, value: List[str]) -> List[str]:
+    @pydantic.validator("analysis_hotkey", "autohack_hotkey")
+    def common_hotkey_sequence_validator(
+        cls, value: List[str], field: pydantic.fields.ModelField
+    ) -> List[str]:
         valid = set(system_hotkey.vk_codes).union(set(system_hotkey.win_modders))
         invalid_keys = set(value).difference(valid)
         if invalid_keys:
+            LOG.error(f"{field.name} has invalid keys: {invalid_keys}")
             raise ValueError(
                 f"The following keys are invalid: {', '.join(invalid_keys)}"
             )
@@ -157,8 +163,9 @@ class Config(pydantic.BaseSettings):
             try:
                 hotkey.parse_hotkeylist(value)
             except Exception as exception:
-                LOG.exception("analysis_hotkey sequence invalid:")
-                raise ValueError(f"Analysis hotkey sequence invalid: {exception}")
+                LOG.exception(f"{field.name} sequence invalid:")
+                nice_name = field.name.replace("_", " ").capitalize()
+                raise ValueError(f"{nice_name} sequence invalid: {exception}")
         return value
 
     @pydantic.validator("daemon_toggle_hotkey")
@@ -250,12 +257,11 @@ class Error:
 
     def __init__(self, exception: Exception):
         message = str(exception)
-        traceback_string = ""
+        traceback_string = "\n".join(traceback.format_tb(exception.__traceback__))
         if isinstance(exception, exceptions.CPAHException):
             critical = exception.critical
             unhandled = False
         else:
-            traceback_string = "\n".join(traceback.format_tb(exception.__traceback__))
             unhandled = critical = True
 
         if unhandled:

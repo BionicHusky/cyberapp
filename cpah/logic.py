@@ -51,8 +51,13 @@ def _migrate_config(data: Dict) -> Dict:
 
     if config_version == 3:
         LOG.debug("Converting config format from version 3 to version 4")
-        data["daemon_toggle_hotkey"] = list()
+        data["daemon_toggle_hotkey"] = ["control" + "shift"]
         config_version = data["schema_version"] = 4
+
+    if config_version == 4:
+        LOG.debug("Converting config format from version 4 to version 5")
+        data["autohack_hotkey"] = ["control", "shift", "k"]
+        config_version = data["schema_version"] = 5
 
     ## NOTE Add more conditionals when more schema versions are added
     ## Remember constants.CONFIG_SCHEMA_VERSION needs to be modified
