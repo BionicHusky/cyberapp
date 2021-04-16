@@ -26,28 +26,6 @@ QCheckBox::indicator {
      height: 15px;
 }</string>
   </property>
-  <widget class="QLabel" name="helpTextLabel">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>520</y>
-     <width>341</width>
-     <height>21</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>[Click here for help](https://jkchen2.gitlab.io/cpah)</string>
-   </property>
-   <property name="textFormat">
-    <enum>Qt::MarkdownText</enum>
-   </property>
-   <property name="alignment">
-    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-   </property>
-   <property name="openExternalLinks">
-    <bool>true</bool>
-   </property>
-  </widget>
   <widget class="QPushButton" name="cancelButton">
    <property name="geometry">
     <rect>
@@ -144,23 +122,23 @@ QCheckBox::indicator {
        <x>10</x>
        <y>210</y>
        <width>485</width>
-       <height>91</height>
+       <height>121</height>
       </rect>
      </property>
      <property name="title">
-      <string>Analysis hotkey</string>
+      <string>Analysis and autohack hotkeys</string>
      </property>
      <widget class="QLabel" name="label_2">
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>40</y>
+        <y>70</y>
         <width>471</width>
         <height>51</height>
        </rect>
       </property>
       <property name="text">
-       <string>This allows you to press a hotkey sequence to start analysis, which is useful if you want to keep the game focused. Clear the field to disable the hotkey.</string>
+       <string>This allows you to define hotkey sequences to start analysis and run the autohack, which is useful if you want to keep the game focused. Clear the field to disable the hotkey.</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>
@@ -169,14 +147,53 @@ QCheckBox::indicator {
      <widget class="QLineEdit" name="analysisHotkeyLineEdit">
       <property name="geometry">
        <rect>
-        <x>10</x>
+        <x>65</x>
         <y>20</y>
-        <width>466</width>
+        <width>411</width>
         <height>20</height>
        </rect>
       </property>
       <property name="placeholderText">
        <string>Example: control + shift + h</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="autohackHotkeyLineEdit">
+      <property name="geometry">
+       <rect>
+        <x>65</x>
+        <y>50</y>
+        <width>411</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="placeholderText">
+       <string>Example: control + shift + k</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_28">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>51</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Analysis</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_29">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>50</y>
+        <width>51</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Autohack</string>
       </property>
      </widget>
     </widget>
@@ -222,57 +239,48 @@ QCheckBox::indicator {
       </property>
      </widget>
     </widget>
-    <widget class="QGroupBox" name="groupBox_11">
+    <widget class="QGroupBox" name="groupBox_15">
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>310</y>
+       <y>340</y>
        <width>485</width>
        <height>91</height>
       </rect>
      </property>
      <property name="title">
-      <string>Game focus delay</string>
+      <string>Daemon toggle hotkey prefix</string>
      </property>
-     <widget class="QSpinBox" name="focusDelaySpinBox">
+     <widget class="QLabel" name="label_27">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>40</y>
+        <width>471</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Allows the toggling of specific daemons via a hotkey. For example, if the hotkey prefix is configured as `control + shift`, the second daemon from the top can be toggled by pressing `control + shift + 2`. Clear the field to disable the hotkey.</string>
+      </property>
+      <property name="textFormat">
+       <enum>Qt::MarkdownText</enum>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="daemonToggleHotkeyLineEdit">
       <property name="geometry">
        <rect>
         <x>10</x>
         <y>20</y>
-        <width>91</width>
-        <height>22</height>
+        <width>466</width>
+        <height>20</height>
        </rect>
       </property>
-      <property name="suffix">
-       <string> ms</string>
-      </property>
-      <property name="minimum">
-       <number>50</number>
-      </property>
-      <property name="maximum">
-       <number>10000</number>
-      </property>
-      <property name="singleStep">
-       <number>50</number>
-      </property>
-      <property name="value">
-       <number>400</number>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_16">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>50</y>
-        <width>471</width>
-        <height>31</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>The amount of time CPAH will wait after trying to focus the game window before starting analysis or autohacking. Increase if it takes a long time to switch to the game window.</string>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
+      <property name="placeholderText">
+       <string>Example: control + shift</string>
       </property>
      </widget>
     </widget>
@@ -1345,7 +1353,7 @@ QCheckBox::indicator {
       </property>
      </widget>
     </widget>
-    <widget class="QGroupBox" name="groupBox_15">
+    <widget class="QGroupBox" name="groupBox_11">
      <property name="geometry">
       <rect>
        <x>10</x>
@@ -1355,42 +1363,77 @@ QCheckBox::indicator {
       </rect>
      </property>
      <property name="title">
-      <string>Daemon toggle hotkey</string>
+      <string>Game focus delay</string>
      </property>
-     <widget class="QLabel" name="label_27">
+     <widget class="QSpinBox" name="focusDelaySpinBox">
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>40</y>
+        <y>20</y>
+        <width>91</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="suffix">
+       <string> ms</string>
+      </property>
+      <property name="minimum">
+       <number>50</number>
+      </property>
+      <property name="maximum">
+       <number>10000</number>
+      </property>
+      <property name="singleStep">
+       <number>50</number>
+      </property>
+      <property name="value">
+       <number>400</number>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_16">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>50</y>
         <width>471</width>
-        <height>51</height>
+        <height>31</height>
        </rect>
       </property>
       <property name="text">
-       <string>Allows the toggling of specific daemons via a hotkey. For example, if the hotkey is configured as `control + shift`, the second daemon from the top can be toggled by pressing `control + shift + 2`. Clear the field to disable the hotkey.</string>
-      </property>
-      <property name="textFormat">
-       <enum>Qt::MarkdownText</enum>
+       <string>The amount of time CPAH will wait after trying to focus the game window before starting analysis or autohacking. Increase if it takes a long time to switch to the game window.</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>
       </property>
      </widget>
-     <widget class="QLineEdit" name="daemonToggleHotkeyLineEdit">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>20</y>
-        <width>466</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="placeholderText">
-       <string>Example: control + shift</string>
-      </property>
-     </widget>
     </widget>
    </widget>
+  </widget>
+  <widget class="QPushButton" name="documentationButton">
+   <property name="geometry">
+    <rect>
+     <x>5</x>
+     <y>520</y>
+     <width>111</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Documentation</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="openLogsButton">
+   <property name="geometry">
+    <rect>
+     <x>120</x>
+     <y>520</y>
+     <width>111</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Open logs folder</string>
+   </property>
   </widget>
  </widget>
  <tabstops>
@@ -1398,7 +1441,8 @@ QCheckBox::indicator {
   <tabstop>automaticAutohackingCheckBox</tabstop>
   <tabstop>beepNotificationsCheckBox</tabstop>
   <tabstop>analysisHotkeyLineEdit</tabstop>
-  <tabstop>focusDelaySpinBox</tabstop>
+  <tabstop>autohackHotkeyLineEdit</tabstop>
+  <tabstop>daemonToggleHotkeyLineEdit</tabstop>
   <tabstop>bufferSizeOverrideSpinBox</tabstop>
   <tabstop>coreTextSpinBox</tabstop>
   <tabstop>matrixCodesSpinBox</tabstop>
@@ -1434,7 +1478,9 @@ QCheckBox::indicator {
   <tabstop>ahkRightKeyLineEdit</tabstop>
   <tabstop>shaCheckBox</tabstop>
   <tabstop>shaTimeoutSpinBox</tabstop>
-  <tabstop>daemonToggleHotkeyLineEdit</tabstop>
+  <tabstop>focusDelaySpinBox</tabstop>
+  <tabstop>documentationButton</tabstop>
+  <tabstop>openLogsButton</tabstop>
   <tabstop>okButton</tabstop>
   <tabstop>cancelButton</tabstop>
  </tabstops>

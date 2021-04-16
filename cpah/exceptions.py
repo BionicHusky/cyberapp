@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Iterable, Optional
 
 import system_hotkey  # type: ignore
 
@@ -29,11 +29,26 @@ class CPAHInvalidNewConfigException(CPAHException):
 
 
 class CPAHHotkeyRegistrationException(CPAHException):
-    def __init__(self, exception: system_hotkey.SystemRegisterError):
-        super().__init__(
-            "The analysis hotkey could not be registered. "
-            f"Is another instance of the tool open?\n\nGiven error: {exception}"
+    def __init__(
+        self,
+        exception: system_hotkey.SystemRegisterError,
+        full_bind: Iterable[str] = list(),
+    ):
+        message = (
+            "A hotkey could not be registered. Are there overlapping keybinds, "
+            "and/or is another instance of the tool open?\n\n"
+            "Some hotkeys will not work until this is resolved.\n\n"
         )
+        error_message = str(exception.args[0])
+        in_use = error_message.startswith("The bind could be in use elsewhere")
+        if not in_use and error_message.startswith("existing bind detected"):
+            in_use = True
+            full_bind = exception.args[1:]
+        if full_bind and in_use:
+            message += f"Hotkey already in use: {' + '.join(full_bind)}"
+        else:
+            message += f"Given error: {exception}"
+        super().__init__(message)
 
 
 class CPAHGameNotFoundException(CPAHException):
