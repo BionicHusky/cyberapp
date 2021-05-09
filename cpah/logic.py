@@ -294,6 +294,7 @@ def grab_screenshot(
 
         screenshot = screengrab_win32.getRectAsImage((x_start, y_start, x_end, y_end))
 
+    LOG.debug(f"Screenshot mode: {screenshot.mode}")
     if screenshot.mode != "RGB":
         screenshot = screenshot.convert("RGB")
 
@@ -353,6 +354,7 @@ def parse_screen_bounds(
 ) -> models.ScreenBounds:
     """Finds key parts of the breach protocol screen and records them."""
     ## Search for the breach title ("BREACH TIME REMAINING")
+    LOG.debug("Matching breach title template")
     breach_title_results = cv2.matchTemplate(
         screenshot_data.screenshot,
         constants.CV_TEMPLATES.titles[constants.Title.BREACH],
@@ -369,6 +371,7 @@ def parse_screen_bounds(
     code_matrix_x_top = location[0]
 
     ## Search for the buffer title ("BUFFER")
+    LOG.debug("Matching buffer title template")
     buffer_template = constants.CV_TEMPLATES.titles[constants.Title.BUFFER]
     buffer_title_results = cv2.matchTemplate(
         screenshot_data.screenshot,
@@ -388,6 +391,7 @@ def parse_screen_bounds(
     buffer_y_top = location[1] + height
 
     ## Search for the sequence title ("SEQUENCE REQUIRED TO UPLOAD")
+    LOG.debug("Matching sequences title template")
     sequences_template = constants.CV_TEMPLATES.titles[constants.Title.SEQUENCES]
     sequence_title_results = cv2.matchTemplate(
         screenshot_data.screenshot,
@@ -443,6 +447,7 @@ def parse_matrix_data(
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
 
     ## Search for each code
+    LOG.debug("Matching matrix code templates")
     x_max = y_max = 0
     x_min = y_min = 9999
     all_code_points = dict()
@@ -511,6 +516,7 @@ def parse_buffer_size_data(
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
 
     ## Search for each box
+    LOG.debug("Matching buffer box templates")
     x_max = 0
     x_min = 9999
     buffer_box_results = cv2.matchTemplate(
@@ -561,6 +567,7 @@ def parse_daemons_data(
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
 
     ## Search for each code
+    LOG.debug("Matching daemon code templates")
     y_max = 0
     x_min = y_min = 9999
     all_sequence_points = dict()
@@ -613,6 +620,7 @@ def parse_daemons_data(
     daemon_names = ["UNKNOWN" for _ in range(sequences_size)]
 
     ## Search for each daemon
+    LOG.debug("Matching daemon name templates")
     for daemon_enum, template in constants.CV_TEMPLATES.daemons.items():
         daemon_results = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
         _, confidence, _, location = cv2.minMaxLoc(daemon_results)

@@ -26,7 +26,10 @@ from PySide2.QtCore import QSettings
 
 ## Helper function for reading opencv templates as files
 def _rt(template_image_path: pathlib.Path):
-    return cv2.imread(str(template_image_path), flags=cv2.IMREAD_COLOR)
+    ## SO: 43185605
+    with template_image_path.open("rb") as template_file:
+        np_array = numpy.asarray(bytearray(template_file.read()), dtype=numpy.uint8)
+        return cv2.imdecode(np_array, cv2.IMREAD_COLOR)
 
 
 DOCUMENTATION_LINK = "https://jkchen2.gitlab.io/cpah/"
