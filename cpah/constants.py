@@ -43,7 +43,7 @@ _version_file = MODULE_DIRECTORY / "VERSION"
 
 ## General application constants
 APPLICATION_NAME = "cp2077_autohack"
-CONFIG_SCHEMA_VERSION = 5
+CONFIG_SCHEMA_VERSION = 6
 VERSION = (
     _version_file.read_text().strip() if _version_file.is_file() else "development"
 )
