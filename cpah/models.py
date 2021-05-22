@@ -275,7 +275,7 @@ class Error:
         self.unhandled = unhandled
         self.critical = critical
         self.message = message
-        self.title = "Error"
+        self.title = f"Error (CPAH {constants.VERSION})"
 
     def __str__(self):
         return (
