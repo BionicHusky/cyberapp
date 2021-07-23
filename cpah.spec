@@ -50,5 +50,5 @@ exe = EXE(pyz,
           strip=False,
           upx=True,
           upx_exclude=[],
-          runtime_tmpdir=None,
+          runtime_tmpdir='',
           console=False , icon='cpah\\resources\\images\\icon.ico')
