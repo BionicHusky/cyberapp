@@ -12,6 +12,7 @@ stages:
 
 variables:
     CPAH_BIN: "cpah.exe"
+    PYTHON_KEYRING_BACKEND: "keyring.backends.null.Keyring"
 
 before_script:
   - Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
