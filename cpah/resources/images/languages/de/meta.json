@@ -1,9 +1,9 @@
 {
     "name": "Deutsch",
     "daemons": {
-        "datamine_v1": "DATA-MINING_V1",
-        "datamine_v2": "DATA-MINING_V2",
-        "datamine_v3": "DATA-MINING_V3",
+        "datamine_v1": "EINFACHES DATA-MINING",
+        "datamine_v2": "VERBESSERTES DATA-MINING",
+        "datamine_v3": "HERAUSRAGENDES DATA-MINING",
         "icepick": "EISBRECHER",
         "mass_vulnerability": "MASSEN-VERWUNDBARKEIT",
         "camera_shutdown": "KAMERA-STILLLEGUNG",

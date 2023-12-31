@@ -1,9 +1,9 @@
 {
     "name": "English",
     "daemons": {
-        "datamine_v1": "DATAMINE_V1",
-        "datamine_v2": "DATAMINE_V2",
-        "datamine_v3": "DATAMINE_V3",
+        "datamine_v1": "BASIC DATAMINE",
+        "datamine_v2": "ADVANCED DATAMINE",
+        "datamine_v3": "EXPERT DATAMINE",
         "icepick": "ICEPICK",
         "mass_vulnerability": "MASS VULNERABILITY",
         "camera_shutdown": "CAMERA SHUTDOWN",
