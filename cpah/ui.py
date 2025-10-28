@@ -838,7 +838,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
     def set_matrix_image(self, image: Optional[Image.Image] = None):
         LOG.debug("Setting matrix image")
         if image is None:
-            self.matrix_label.setPixmap(None)
+            self.matrix_label.clear()
             self.set_matrix_overlay_image()
             self.matrix_overlay_label.setStyleSheet(constants.LABEL_HINT_STYLE)
             self.matrix_overlay_label.setText("CODE MATRIX")
@@ -849,14 +849,14 @@ class CPAH(ErrorHandlerMixin, QWidget):
     def set_matrix_overlay_image(self, image: Optional[Image.Image] = None):
         LOG.debug("Setting matrix overlay image")
         if image is None:
-            self.matrix_overlay_label.setPixmap(None)
+            self.matrix_overlay_label.clear()
         else:
             self._convert_and_set_image(image, self.matrix_overlay_label)
 
     def set_buffer_image(self, image: Optional[Image.Image] = None):
         LOG.debug("Setting buffer image")
         if image is None:
-            self.buffer_label.setPixmap(None)
+            self.buffer_label.clear()
             self.set_buffer_overlay_image()
             self.buffer_overlay_label.setStyleSheet(constants.LABEL_HINT_STYLE)
             self.buffer_overlay_label.setText("BUFFER")
@@ -868,7 +868,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
     def set_buffer_overlay_image(self, image: Optional[Image.Image] = None):
         LOG.debug("Setting buffer overlay image")
         if image is None:
-            self.buffer_overlay_label.setPixmap(None)
+            self.buffer_overlay_label.clear()
         else:
             self.set_buffer_image(self.buffer_image_cache)
             self._convert_and_set_image(image, self.buffer_overlay_label)
