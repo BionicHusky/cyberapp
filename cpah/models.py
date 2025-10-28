@@ -196,6 +196,21 @@ class Config(pydantic.BaseSettings):
 @dataclasses.dataclass
 class ScreenshotData:
     screenshot: numpy.ndarray
+    scale: float = 1.0
+    width: int = dataclasses.field(init=False)
+    height: int = dataclasses.field(init=False)
+    _templates: Optional["constants.ScaledTemplates"] = dataclasses.field(
+        default=None, init=False, repr=False
+    )
+
+    def __post_init__(self):
+        self.height, self.width = self.screenshot.shape[:2]
+
+    @property
+    def templates(self) -> "constants.ScaledTemplates":
+        if self._templates is None:
+            self._templates = constants.CV_TEMPLATES.get_scaled(self.scale)
+        return self._templates
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
