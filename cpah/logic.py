@@ -348,11 +348,11 @@ def grab_screenshot(
             )[::order]
             screenshot = screenshot.crop(crop_start + crop_end)
 
-    screenshot = screenshot.resize(constants.ANALYSIS_IMAGE_SIZE)
-
     ## Convert screenshot to numpy array (so cv2 can use them)
+    scale = screenshot.size[0] / constants.ANALYSIS_BASE_IMAGE_SIZE[0]
+    LOG.debug(f"Screenshot scale factor: {scale:.3f}")
     screenshot = numpy.array(screenshot)[:, :, ::-1].copy()
-    screenshot_data = models.ScreenshotData(screenshot=screenshot)
+    screenshot_data = models.ScreenshotData(screenshot=screenshot, scale=scale)
     return screenshot_data
 
 
@@ -362,9 +362,10 @@ def parse_screen_bounds(
     """Finds key parts of the breach protocol screen and records them."""
     ## Search for the breach title ("BREACH TIME REMAINING")
     LOG.debug("Matching breach title template")
+    templates = screenshot_data.templates
     breach_title_results = cv2.matchTemplate(
         screenshot_data.screenshot,
-        constants.CV_TEMPLATES.titles[constants.Title.BREACH],
+        templates.titles[constants.Title.BREACH],
         cv2.TM_CCOEFF_NORMED,
     )
     _, confidence, _, location = cv2.minMaxLoc(breach_title_results)
@@ -379,7 +380,7 @@ def parse_screen_bounds(
 
     ## Search for the buffer title ("BUFFER")
     LOG.debug("Matching buffer title template")
-    buffer_template = constants.CV_TEMPLATES.titles[constants.Title.BUFFER]
+    buffer_template = templates.titles[constants.Title.BUFFER]
     buffer_title_results = cv2.matchTemplate(
         screenshot_data.screenshot,
         buffer_template,
@@ -399,7 +400,7 @@ def parse_screen_bounds(
 
     ## Search for the sequence title ("SEQUENCE REQUIRED TO UPLOAD")
     LOG.debug("Matching sequences title template")
-    sequences_template = constants.CV_TEMPLATES.titles[constants.Title.SEQUENCES]
+    sequences_template = templates.titles[constants.Title.SEQUENCES]
     sequence_title_results = cv2.matchTemplate(
         screenshot_data.screenshot,
         sequences_template,
@@ -413,16 +414,16 @@ def parse_screen_bounds(
         )
 
     ## Assign coordinate elements
-    width = constants.BASE_SEQUENCE_TEMPLATE_WIDTH
+    width = sequences_template.shape[1]
     height = sequences_template.shape[0]
     buffer_y_bottom = location[1]
     code_matrix_y_top = sequences_y_top = daemons_y_top = location[1] + height
     daemons_x_top = sequences_x_bottom = location[0] + width
 
     ## Estimates for the rest of the search bounds
-    bottom_cutoff = code_matrix_y_top + int(constants.ANALYSIS_IMAGE_SIZE[1] * 0.5)
+    bottom_cutoff = code_matrix_y_top + int(screenshot_data.height * 0.5)
     code_matrix_y_bottom = sequences_y_bottom = daemons_y_bottom = bottom_cutoff
-    daemons_x_bottom = buffer_x_bottom = int(constants.ANALYSIS_IMAGE_SIZE[0] * 0.9)
+    daemons_x_bottom = buffer_x_bottom = int(screenshot_data.width * 0.9)
 
     return models.ScreenBounds(
         code_matrix=(
@@ -458,7 +459,9 @@ def parse_matrix_data(
     x_max = y_max = 0
     x_min = y_min = 9999
     all_code_points = dict()
-    for index, template in enumerate(constants.CV_TEMPLATES.codes):
+    templates = screenshot_data.templates
+    gap_size = constants.CV_MATRIX_GAP_SIZE * screenshot_data.scale
+    for index, template in enumerate(templates.codes):
         code_results = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
         matches = numpy.where(code_results >= config.matrix_code_detection_threshold)
         all_code_points[index] = code_points = list(zip(*matches[::-1]))
@@ -475,8 +478,8 @@ def parse_matrix_data(
     LOG.debug(f"Matrix parsing found min/max: ({x_min}, {y_min}) / ({x_max}, {y_max})")
 
     ## Adjust code points based on maximum and minimum values
-    matrix_size = round((x_max - x_min) / constants.CV_MATRIX_GAP_SIZE) + 1
-    matrix_size_y = round((y_max - y_min) / constants.CV_MATRIX_GAP_SIZE) + 1
+    matrix_size = round((x_max - x_min) / gap_size) + 1
+    matrix_size_y = round((y_max - y_min) / gap_size) + 1
     if matrix_size not in constants.VALID_MATRIX_SIZES:
         raise exceptions.CPAHMatrixParseFailedException(
             f"Detected matrix size is invalid ({matrix_size})."
@@ -492,8 +495,8 @@ def parse_matrix_data(
     ]
     for code_index, points in all_code_points.items():
         for x, y in points:
-            row = round((x - x_min) / constants.CV_MATRIX_GAP_SIZE)
-            column = round((y - y_min) / constants.CV_MATRIX_GAP_SIZE)
+            row = round((x - x_min) / gap_size)
+            column = round((y - y_min) / gap_size)
             data[column][row] = code_index
 
     LOG.debug(f"Matrix parsing found data: {data}")
@@ -526,8 +529,9 @@ def parse_buffer_size_data(
     LOG.debug("Matching buffer box templates")
     x_max = 0
     x_min = 9999
+    templates = screenshot_data.templates
     buffer_box_results = cv2.matchTemplate(
-        crop, constants.CV_TEMPLATES.buffer_box, cv2.TM_CCOEFF_NORMED
+        crop, templates.buffer_box, cv2.TM_CCOEFF_NORMED
     )
     matches = numpy.where(buffer_box_results >= config.buffer_box_detection_threshold)
     buffer_box_points = list(zip(*matches[::-1]))
@@ -540,16 +544,18 @@ def parse_buffer_size_data(
 
     LOG.debug(f"Buffer box parsing found x min/max: {x_min} / {x_max}")
 
-    if x_min > constants.BUFFER_MIN_X_THRESHOLD:
+    min_threshold = constants.BUFFER_MIN_X_THRESHOLD * screenshot_data.scale
+    if x_min > min_threshold:
         LOG.error(
             "Buffer box start position is past the start threshold "
-            f"({x_min} > {constants.BUFFER_MIN_X_THRESHOLD})"
+            f"({x_min} > {min_threshold})"
         )
         raise exceptions.CPAHBufferParseFailedException(
             "Buffer box detection is misaligned."
         )
 
-    buffer_size = round((x_max - x_min) / constants.CV_BUFFER_BOX_GAP_SIZE) + 1
+    gap_size = constants.CV_BUFFER_BOX_GAP_SIZE * screenshot_data.scale
+    buffer_size = round((x_max - x_min) / gap_size) + 1
 
     LOG.debug(f"Buffer box parsing found buffer size: {buffer_size}")
     if not 0 < buffer_size <= constants.BUFFER_COUNT_THRESHOLD:
@@ -569,7 +575,9 @@ def parse_daemons_data(
     Tuple[str, ...],  ## Daemon names
 ]:
     """Parses the section of the screenshot to get sequences data."""
-    daemons_gap_size = constants.CV_TEMPLATES.daemons_gap_size
+    templates = screenshot_data.templates
+    daemons_gap_size = templates.daemons_gap_size
+    sequences_x_gap_size = constants.CV_SEQUENCES_X_GAP_SIZE * screenshot_data.scale
     box = screen_bounds.sequences
     crop = screenshot_data.screenshot[box[0][1] : box[1][1], box[0][0] : box[1][0]]
 
@@ -578,7 +586,7 @@ def parse_daemons_data(
     y_max = 0
     x_min = y_min = 9999
     all_sequence_points = dict()
-    for index, template in enumerate(constants.CV_TEMPLATES.small_codes):
+    for index, template in enumerate(templates.small_codes):
         code_results = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
         matches = numpy.where(code_results >= config.sequence_code_detection_threshold)
         all_sequence_points[index] = code_points = list(zip(*matches[::-1]))
@@ -597,7 +605,7 @@ def parse_daemons_data(
     for code_index, points in all_sequence_points.items():
         for x, y in points:
             sequence_index = round((y - y_min) / daemons_gap_size)
-            code_position = round((x - x_min) / constants.CV_SEQUENCES_X_GAP_SIZE)
+            code_position = round((x - x_min) / sequences_x_gap_size)
             sequence = data[sequence_index]
             size_difference = code_position - len(sequence) + 1
             if size_difference > 0:
@@ -628,13 +636,13 @@ def parse_daemons_data(
 
     ## Search for each daemon
     LOG.debug("Matching daemon name templates")
-    for daemon_enum, template in constants.CV_TEMPLATES.daemons.items():
+    for daemon_enum, template in templates.daemons.items():
         daemon_results = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
         _, confidence, _, location = cv2.minMaxLoc(daemon_results)
         if confidence >= config.daemon_detection_threshold:
             daemon_index = round((location[1] - y_min) / daemons_gap_size)
             daemons[daemon_index] = daemon_enum
-            daemon_names[daemon_index] = constants.CV_TEMPLATES.daemon_names.get(
+            daemon_names[daemon_index] = templates.daemon_names.get(
                 daemon_enum, "UNKNOWN"
             )
             if all(daemons):

@@ -2,7 +2,9 @@
 ## This must be run before pyautogui is imported, as it does some
 ## behind-the-scenes stuff involving making the process DPI aware,
 ## which breaks many things involving the screenshot process.
-from PySide2.QtWidgets import QApplication
+import dataclasses
+
+from PySide6.QtWidgets import QApplication
 
 QAPPLICATION_INSTANCE = QApplication([])
 
@@ -21,7 +23,7 @@ import numpy  # type: ignore
 
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
 
-from PySide2.QtCore import QSettings
+from PySide6.QtCore import QSettings
 
 
 ## Helper function for reading opencv templates as files
@@ -140,8 +142,8 @@ for _language_directory in (IMAGES_DIRECTORY / "languages").iterdir():
     TEMPLATE_LANGUAGE_DATA[_metadata["name"]] = _metadata
 
 ## Opencv data parsing constants
-ANALYSIS_IMAGE_SIZE = (1920, 1080)
-ANALYSIS_IMAGE_RATIO = ANALYSIS_IMAGE_SIZE[0] / ANALYSIS_IMAGE_SIZE[1]
+ANALYSIS_BASE_IMAGE_SIZE = (1920, 1080)
+ANALYSIS_IMAGE_RATIO = ANALYSIS_BASE_IMAGE_SIZE[0] / ANALYSIS_BASE_IMAGE_SIZE[1]
 CV_MATRIX_GAP_SIZE = 64.5
 CV_BUFFER_BOX_GAP_SIZE = 42.0
 CV_SEQUENCES_X_GAP_SIZE = 42.0
@@ -234,6 +236,18 @@ for _code_name in CODE_NAMES:
     BUFFER_CODE_IMAGES.append(_code_image)
 
 
+@dataclasses.dataclass(frozen=True)
+class ScaledTemplates:
+    scale: float
+    titles: Dict[Title, numpy.ndarray]
+    codes: Tuple[numpy.ndarray, ...]
+    small_codes: Tuple[numpy.ndarray, ...]
+    daemons: Dict[Daemon, numpy.ndarray]
+    daemon_names: Dict[Daemon, str]
+    buffer_box: numpy.ndarray
+    daemons_gap_size: float
+
+
 class Templates:
     def __init__(self):
         self._language: Optional[str] = None
@@ -257,6 +271,7 @@ class Templates:
         self._daemon_names: Dict[Daemon, str] = dict()
         self._daemons: Dict[Daemon, numpy.ndarray] = dict()
         self._titles: Dict[Title, numpy.ndarray] = dict()
+        self._scaled_cache: Dict[Tuple[str, float], ScaledTemplates] = dict()
 
     def requires_language(method):
         def _decorated(self, *args, **kwargs):
@@ -292,6 +307,16 @@ class Templates:
 
         self._titles = {it: _rt(directory / f"title_{it.value}.png") for it in Title}
         self._language = language
+        self._scaled_cache.clear()
+
+    @staticmethod
+    def _resize_template(template: numpy.ndarray, scale: float) -> numpy.ndarray:
+        if scale == 1.0:
+            return template
+        height, width = template.shape[:2]
+        new_width = max(1, int(round(width * scale)))
+        new_height = max(1, int(round(height * scale)))
+        return cv2.resize(template, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
 
     @property  # type: ignore
     @requires_language
@@ -322,6 +347,33 @@ class Templates:
     @requires_language
     def daemons_gap_size(self):
         return self._daemons_gap_size
+
+    @requires_language
+    def get_scaled(self, scale: float) -> ScaledTemplates:
+        rounded_scale = round(scale, 4)
+        cache_key = (self._language, rounded_scale)
+        if cache_key not in self._scaled_cache:
+            titles = {k: self._resize_template(v, scale) for k, v in self._titles.items()}
+            codes = tuple(self._resize_template(it, scale) for it in self._codes)
+            small_codes = tuple(
+                self._resize_template(it, scale) for it in self._small_codes
+            )
+            daemons = {
+                daemon: self._resize_template(image, scale)
+                for daemon, image in self._daemons.items()
+            }
+            buffer_box = self._resize_template(self.buffer_box, scale)
+            self._scaled_cache[cache_key] = ScaledTemplates(
+                scale=scale,
+                titles=titles,
+                codes=codes,
+                small_codes=small_codes,
+                daemons=daemons,
+                daemon_names=self._daemon_names,
+                buffer_box=buffer_box,
+                daemons_gap_size=self._daemons_gap_size * scale,
+            )
+        return self._scaled_cache[cache_key]
 
 
 CV_TEMPLATES = Templates()

@@ -244,7 +244,7 @@ That directory can be removed as well if necessary.
 
 A: The binary bundles several Python modules with PyInstaller.
 The biggest module is `opencv-python-headless`, which by itself accounts for about 50 MB.
-The rest is a mix of `PySide2` (the Qt framework), `Pillow`, `pydantic`, and a few others.
+The rest is a mix of `PySide6` (the Qt framework), `Pillow`, `pydantic`, and a few others.
 All dependencies are bundled together as to avoid requiring the user to install anything else.
 
 **Q: Why does it take so long to open?**

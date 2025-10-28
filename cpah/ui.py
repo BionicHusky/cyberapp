@@ -14,8 +14,8 @@ import pyautogui  # type: ignore
 import system_hotkey  # type: ignore
 
 from PIL import Image  # type: ignore
-from PySide2.QtCore import QFile, QObject, QRect, Qt, QThread, Signal
-from PySide2.QtGui import (
+from PySide6.QtCore import QFile, QObject, QRect, Qt, QThread, Signal
+from PySide6.QtGui import (
     QCloseEvent,
     QFontDatabase,
     QHideEvent,
@@ -23,8 +23,8 @@ from PySide2.QtGui import (
     QPixmap,
     QShowEvent,
 )
-from PySide2.QtUiTools import QUiLoader
-from PySide2.QtWidgets import (
+from PySide6.QtUiTools import QUiLoader
+from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
@@ -49,12 +49,13 @@ from . import models
 from .logger import LOG
 
 
-## Workaround for certain unhandled exceptions using PyQt5 instead of PySide2
+## Workaround for certain unhandled exceptions using PyQt5 instead of PySide6
 ## And also ImageQt for using PyQt5
 ## SO: 27340162
-import PySide2
+import PySide6
 
-sys.modules["pyQt5"] = PySide2
+sys.modules["PyQt5"] = PySide6
+sys.modules["pyqt5"] = PySide6
 from PIL import ImageQt
 
 
@@ -837,7 +838,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
     def set_matrix_image(self, image: Optional[Image.Image] = None):
         LOG.debug("Setting matrix image")
         if image is None:
-            self.matrix_label.setPixmap(None)
+            self.matrix_label.clear()
             self.set_matrix_overlay_image()
             self.matrix_overlay_label.setStyleSheet(constants.LABEL_HINT_STYLE)
             self.matrix_overlay_label.setText("CODE MATRIX")
@@ -848,14 +849,14 @@ class CPAH(ErrorHandlerMixin, QWidget):
     def set_matrix_overlay_image(self, image: Optional[Image.Image] = None):
         LOG.debug("Setting matrix overlay image")
         if image is None:
-            self.matrix_overlay_label.setPixmap(None)
+            self.matrix_overlay_label.clear()
         else:
             self._convert_and_set_image(image, self.matrix_overlay_label)
 
     def set_buffer_image(self, image: Optional[Image.Image] = None):
         LOG.debug("Setting buffer image")
         if image is None:
-            self.buffer_label.setPixmap(None)
+            self.buffer_label.clear()
             self.set_buffer_overlay_image()
             self.buffer_overlay_label.setStyleSheet(constants.LABEL_HINT_STYLE)
             self.buffer_overlay_label.setText("BUFFER")
@@ -867,7 +868,7 @@ class CPAH(ErrorHandlerMixin, QWidget):
     def set_buffer_overlay_image(self, image: Optional[Image.Image] = None):
         LOG.debug("Setting buffer overlay image")
         if image is None:
-            self.buffer_overlay_label.setPixmap(None)
+            self.buffer_overlay_label.clear()
         else:
             self.set_buffer_image(self.buffer_image_cache)
             self._convert_and_set_image(image, self.buffer_overlay_label)

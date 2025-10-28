@@ -76,7 +76,7 @@ class CPAHDataParseFailedException(CPAHException):
     ):
         combined_message = (
             f"{message}\n\nIf you are playing at a resolution smaller than "
-            f"{constants.ANALYSIS_IMAGE_SIZE[0]}x{constants.ANALYSIS_IMAGE_SIZE[1]}, "
+            f"{constants.ANALYSIS_BASE_IMAGE_SIZE[0]}x{constants.ANALYSIS_BASE_IMAGE_SIZE[1]}, "
             f"you may need to decrease {detection_type} detection thresholds. "
             "Additionally, ensure your mouse cursor is not in the way of elements."
         )
