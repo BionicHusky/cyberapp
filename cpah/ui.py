@@ -14,8 +14,8 @@ import pyautogui  # type: ignore
 import system_hotkey  # type: ignore
 
 from PIL import Image  # type: ignore
-from PySide2.QtCore import QFile, QObject, QRect, Qt, QThread, Signal
-from PySide2.QtGui import (
+from PySide6.QtCore import QFile, QObject, QRect, Qt, QThread, Signal
+from PySide6.QtGui import (
     QCloseEvent,
     QFontDatabase,
     QHideEvent,
@@ -23,8 +23,8 @@ from PySide2.QtGui import (
     QPixmap,
     QShowEvent,
 )
-from PySide2.QtUiTools import QUiLoader
-from PySide2.QtWidgets import (
+from PySide6.QtUiTools import QUiLoader
+from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
@@ -49,12 +49,13 @@ from . import models
 from .logger import LOG
 
 
-## Workaround for certain unhandled exceptions using PyQt5 instead of PySide2
+## Workaround for certain unhandled exceptions using PyQt5 instead of PySide6
 ## And also ImageQt for using PyQt5
 ## SO: 27340162
-import PySide2
+import PySide6
 
-sys.modules["pyQt5"] = PySide2
+sys.modules["PyQt5"] = PySide6
+sys.modules["pyqt5"] = PySide6
 from PIL import ImageQt
 
 
